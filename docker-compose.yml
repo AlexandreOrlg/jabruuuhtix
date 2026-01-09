@@ -32,6 +32,7 @@ services:
       - traefik.http.services.jabruuuhtix-prod-fuxmeg-3-websecure.loadbalancer.server.port=8081
       - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-websecure.service=jabruuuhtix-prod-fuxmeg-3-websecure
       - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-websecure.tls.certresolver=letsencrypt
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-websecure.priority=200
       - traefik.enable=true
     networks:
       - dokploy-network
@@ -59,6 +60,7 @@ services:
       - traefik.http.services.jabruuuhtix-prod-fuxmeg-4-websecure.loadbalancer.server.port=80
       - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-websecure.service=jabruuuhtix-prod-fuxmeg-4-websecure
       - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-websecure.tls.certresolver=letsencrypt
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-websecure.priority=100
       - traefik.enable=true
     networks:
       - dokploy-network
