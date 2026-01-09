@@ -2,8 +2,6 @@ services:
   # Backend API
   embedding-api:
     build: ./backend
-    ports:
-      - "8081:8081"
     volumes:
       - fasttext-cache:/app/.cache/fasttext
     env_file:
@@ -11,6 +9,13 @@ services:
     environment:
       - FASTTEXT_CACHE_DIR=/app/.cache/fasttext
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jabruuuhtix-api.rule=Host(`jabruuuhtix.xelandre.me`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.jabruuuhtix-api.entrypoints=websecure"
+      - "traefik.http.routers.jabruuuhtix-api.tls=true"
+      - "traefik.http.routers.jabruuuhtix-api.priority=100"
+      - "traefik.http.services.jabruuuhtix-api.loadbalancer.server.port=8081"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s
@@ -26,11 +31,16 @@ services:
         - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
         - VITE_API_URL=${VITE_API_URL:-http://localhost:8081}
-    ports:
-      - "3001:80"
     depends_on:
       - embedding-api
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jabruuuhtix.rule=Host(`jabruuuhtix.xelandre.me`)"
+      - "traefik.http.routers.jabruuuhtix.entrypoints=websecure"
+      - "traefik.http.routers.jabruuuhtix.tls=true"
+      - "traefik.http.routers.jabruuuhtix.priority=10"
+      - "traefik.http.services.jabruuuhtix.loadbalancer.server.port=80"
 
 volumes:
   fasttext-cache:
