@@ -109,17 +109,18 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
             setIsLoading(true);
             setError(null);
 
-            try {
-                const data = await submitGuess({
-                    roomCode: room.code,
-                    playerId,
-                    playerName,
-                    word,
-                });
+                try {
+                    const data = await submitGuess({
+                        roomCode: room.code,
+                        playerId,
+                        playerName,
+                        word,
+                    });
 
-                if (data.revealedWord) {
-                    setRoom((prev) => (prev ? prev.withRevealedWord(data.revealedWord) : prev));
-                }
+                    const revealedWord = data.revealedWord;
+                    if (revealedWord) {
+                        setRoom((prev) => (prev ? prev.withRevealedWord(revealedWord) : prev));
+                    }
 
                 return data;
             } catch (err) {
