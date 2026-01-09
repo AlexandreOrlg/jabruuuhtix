@@ -1,4 +1,5 @@
 import type { Guess } from "@/models/Guess";
+import type { PlayerData } from "@/models/Player";
 import { usePlayers } from "@/hooks/usePlayers";
 import { GameHeader } from "./GameHeader";
 import { ScoreCard } from "./ScoreCard";
@@ -10,6 +11,7 @@ import { PlayerSidebar } from "./PlayerSidebar";
 interface GameScreenProps {
     roomCode: string;
     guesses: Guess[];
+    presentPlayers: PlayerData[];
     bestScore: number;
     revealedWord: string | null;
     playerId: string;
@@ -23,6 +25,7 @@ interface GameScreenProps {
 export function GameScreen({
     roomCode,
     guesses,
+    presentPlayers,
     bestScore,
     revealedWord,
     playerId,
@@ -32,10 +35,10 @@ export function GameScreen({
     isLoading,
     error,
 }: GameScreenProps) {
-    const players = usePlayers(guesses, playerId);
+    const players = usePlayers(guesses, playerId, presentPlayers);
 
     return (
-        <div className="min-h-screen flex">
+        <div className="min-h-screen flex overflow-auto h-full">
             <PlayerSidebar players={players} />
 
             <div className="flex-1 p-4">

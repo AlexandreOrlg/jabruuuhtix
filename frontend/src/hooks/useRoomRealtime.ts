@@ -9,32 +9,87 @@ import { Room } from "@/models/Room";
 
 interface UseRoomRealtimeOptions {
     roomId: string | null;
+    playerId: string;
+    playerName: string;
     onGuessInsert: (guess: Guess) => void;
     onRoomUpdate: (room: Room) => void;
     onPresenceSync?: (players: PlayerData[]) => void;
+    onPresenceJoin?: (players: PlayerData[]) => void;
+    onPresenceLeave?: (players: PlayerData[]) => void;
+}
+
+function isPlayerPresence(value: unknown): value is PlayerData {
+    if (!value || typeof value !== "object") return false;
+    const candidate = value as Record<string, unknown>;
+    return typeof candidate.id === "string" && typeof candidate.name === "string";
+}
+
+function normalizePresenceList(presences: unknown): PlayerData[] {
+    if (!Array.isArray(presences)) return [];
+    const players: PlayerData[] = [];
+    for (const presence of presences) {
+        if (isPlayerPresence(presence)) {
+            const joinedAt =
+                typeof presence.joinedAt === "string" ? presence.joinedAt : undefined;
+            players.push({
+                id: presence.id,
+                name: presence.name,
+                joinedAt,
+            });
+        }
+    }
+    return players;
+}
+
+function normalizePresenceState(state: Record<string, unknown>): PlayerData[] {
+    const players = new Map<string, PlayerData>();
+    for (const presences of Object.values(state)) {
+        for (const presence of normalizePresenceList(presences)) {
+            players.set(presence.id, presence);
+        }
+    }
+    return Array.from(players.values());
 }
 
 export function useRoomRealtime({
     roomId,
+    playerId,
+    playerName,
     onGuessInsert,
     onRoomUpdate,
     onPresenceSync,
+    onPresenceJoin,
+    onPresenceLeave,
 }: UseRoomRealtimeOptions): void {
     const callbacksRef = useRef({
         onGuessInsert,
         onRoomUpdate,
         onPresenceSync,
+        onPresenceJoin,
+        onPresenceLeave,
     });
 
     useEffect(() => {
-        callbacksRef.current = { onGuessInsert, onRoomUpdate, onPresenceSync };
-    }, [onGuessInsert, onRoomUpdate, onPresenceSync]);
+        callbacksRef.current = {
+            onGuessInsert,
+            onRoomUpdate,
+            onPresenceSync,
+            onPresenceJoin,
+            onPresenceLeave,
+        };
+    }, [onGuessInsert, onRoomUpdate, onPresenceSync, onPresenceJoin, onPresenceLeave]);
 
     useEffect(() => {
         if (!roomId) return;
 
         const roomChannel: RealtimeChannel = supabase
-            .channel(`room:${roomId}`)
+            .channel(`room:${roomId}`, {
+                config: {
+                    presence: {
+                        key: playerId,
+                    },
+                },
+            })
             .on(
                 "postgres_changes",
                 {
@@ -62,34 +117,45 @@ export function useRoomRealtime({
                 }
             )
             .on("presence", { event: "sync" }, () => {
-                if (!callbacksRef.current.onPresenceSync) return;
-                const state = roomChannel.presenceState();
-                const presentPlayers: PlayerData[] = [];
-
-                for (const key in state) {
-                    const presences = state[key] as unknown as Array<{
-                        id: string;
-                        name: string;
-                        joinedAt?: string;
-                    }>;
-
-                    for (const presence of presences) {
-                        if (presence.id && presence.name) {
-                            presentPlayers.push({
-                                id: presence.id,
-                                name: presence.name,
-                                joinedAt: presence.joinedAt,
-                            });
-                        }
-                    }
-                }
-
-                callbacksRef.current.onPresenceSync(presentPlayers);
+                const handler = callbacksRef.current.onPresenceSync;
+                if (!handler) return;
+                const state = roomChannel.presenceState() as Record<string, unknown>;
+                handler(normalizePresenceState(state));
             })
-            .subscribe();
+            .on("presence", { event: "join" }, (payload) => {
+                const handler = callbacksRef.current.onPresenceJoin;
+                if (!handler) return;
+                const players = normalizePresenceList(
+                    (payload as { newPresences?: unknown }).newPresences
+                );
+                if (players.length > 0) {
+                    handler(players);
+                }
+            })
+            .on("presence", { event: "leave" }, (payload) => {
+                const handler = callbacksRef.current.onPresenceLeave;
+                if (!handler) return;
+                const players = normalizePresenceList(
+                    (payload as { leftPresences?: unknown }).leftPresences
+                );
+                if (players.length > 0) {
+                    handler(players);
+                }
+            })
+            .subscribe((status) => {
+                if (status !== "SUBSCRIBED") return;
+                const trimmedName = playerName.trim();
+                if (!trimmedName) return;
+                roomChannel.track({
+                    id: playerId,
+                    name: trimmedName,
+                    joinedAt: new Date().toISOString(),
+                });
+            });
 
         return () => {
+            roomChannel.untrack();
             roomChannel.unsubscribe();
         };
-    }, [roomId]);
+    }, [roomId, playerId, playerName]);
 }

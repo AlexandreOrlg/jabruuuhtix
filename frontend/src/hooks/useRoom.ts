@@ -1,11 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createRoom, fetchRoomByCode } from "@/api/rooms";
 import { fetchGuessesByRoomId, submitGuess } from "@/api/guesses";
 import { useGuesses } from "@/hooks/useGuesses";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { Guess } from "@/models/Guess";
 import type { Room } from "@/models/Room";
+import type { PlayerData } from "@/models/Player";
 import type { SubmitGuessResponse } from "@/lib/types";
+import { toast } from "@/components/ui/8bit/toast";
 
 interface UseRoomOptions {
     playerId: string;
@@ -16,6 +18,7 @@ interface UseRoomReturn {
     room: Room | null;
     guesses: Guess[];
     submittedWords: Set<string>;
+    presentPlayers: PlayerData[];
     isLoading: boolean;
     error: string | null;
     bestScore: number;
@@ -30,6 +33,8 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     const [room, setRoom] = useState<Room | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [presentPlayers, setPresentPlayers] = useState<PlayerData[]>([]);
+    const knownPlayersRef = useRef<Set<string>>(new Set());
 
     const { guesses, addGuess, replaceGuesses, clearGuesses, submittedWords } =
         useGuesses(playerId);
@@ -48,10 +53,63 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         [addGuess]
     );
 
+    const mergePlayers = useCallback(
+        (current: PlayerData[], incoming: PlayerData[]) => {
+            const merged = new Map<string, PlayerData>();
+            for (const player of current) {
+                merged.set(player.id, player);
+            }
+            for (const player of incoming) {
+                merged.set(player.id, player);
+            }
+            return Array.from(merged.values());
+        },
+        []
+    );
+
+    const handlePresenceSync = useCallback((players: PlayerData[]) => {
+        setPresentPlayers(players);
+        knownPlayersRef.current = new Set(players.map((player) => player.id));
+    }, []);
+
+    const handlePresenceJoin = useCallback(
+        (players: PlayerData[]) => {
+            setPresentPlayers((prev) => mergePlayers(prev, players));
+            for (const player of players) {
+                if (player.id === playerId) continue;
+                if (!knownPlayersRef.current.has(player.id)) {
+                    toast(`${player.name} a rejoint la partie !`);
+                }
+                knownPlayersRef.current.add(player.id);
+            }
+        },
+        [mergePlayers, playerId]
+    );
+
+    const handlePresenceLeave = useCallback(
+        (players: PlayerData[]) => {
+            const leavingIds = new Set(players.map((player) => player.id));
+            setPresentPlayers((prev) => prev.filter((player) => !leavingIds.has(player.id)));
+            for (const player of players) {
+                if (player.id === playerId) continue;
+                if (knownPlayersRef.current.has(player.id)) {
+                    toast(`${player.name} a quitte la partie.`);
+                }
+                knownPlayersRef.current.delete(player.id);
+            }
+        },
+        [playerId]
+    );
+
     useRoomRealtime({
         roomId: room?.id ?? null,
+        playerId,
+        playerName,
         onGuessInsert: handleGuessInsert,
         onRoomUpdate: handleRoomUpdate,
+        onPresenceSync: handlePresenceSync,
+        onPresenceJoin: handlePresenceJoin,
+        onPresenceLeave: handlePresenceLeave,
     });
 
     const createRoomHandler = useCallback(async (): Promise<Room | null> => {
@@ -62,6 +120,8 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
             const newRoom = await createRoom(playerName);
             setRoom(newRoom);
             replaceGuesses([]);
+            setPresentPlayers([]);
+            knownPlayersRef.current = new Set();
             return newRoom;
         } catch (err) {
             const message = err instanceof Error ? err.message : "Unknown error";
@@ -86,6 +146,8 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
                 const roomGuesses = await fetchGuessesByRoomId(foundRoom.id);
                 setRoom(foundRoom);
                 replaceGuesses(roomGuesses);
+                setPresentPlayers([]);
+                knownPlayersRef.current = new Set();
 
                 return true;
             } catch (err) {
@@ -137,6 +199,8 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     const leaveRoom = useCallback(() => {
         setRoom(null);
         clearGuesses();
+        setPresentPlayers([]);
+        knownPlayersRef.current = new Set();
         setError(null);
     }, [clearGuesses]);
 
@@ -144,6 +208,7 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         room,
         guesses,
         submittedWords,
+        presentPlayers,
         isLoading,
         error,
         bestScore,

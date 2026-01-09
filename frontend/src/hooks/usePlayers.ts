@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
-import { toast } from "sonner";
+import { useMemo } from "react";
 import { Guess } from "@/models/Guess";
 import { Player } from "@/models/Player";
+import type { PlayerData } from "@/models/Player";
 
 export interface PlayerSummary {
     id: string;
@@ -12,11 +12,26 @@ export interface PlayerSummary {
     isCurrent: boolean;
 }
 
-export function usePlayers(guesses: Guess[], currentPlayerId: string): PlayerSummary[] {
-    const knownPlayersRef = useRef<Set<string>>(new Set());
-
+export function usePlayers(
+    guesses: Guess[],
+    currentPlayerId: string,
+    presentPlayers: PlayerData[] = []
+): PlayerSummary[] {
     const players = useMemo(() => {
         const playerMap = new Map<string, Player>();
+
+        for (const player of presentPlayers) {
+            if (!playerMap.has(player.id)) {
+                playerMap.set(
+                    player.id,
+                    new Player({
+                        id: player.id,
+                        name: player.name,
+                        joinedAt: player.joinedAt,
+                    })
+                );
+            }
+        }
 
         for (const guess of guesses) {
             if (!playerMap.has(guess.playerId)) {
@@ -41,16 +56,7 @@ export function usePlayers(guesses: Guess[], currentPlayerId: string): PlayerSum
                 isCurrent: player.isCurrentPlayer(currentPlayerId),
             }))
             .sort((a, b) => b.bestScore - a.bestScore);
-    }, [guesses, currentPlayerId]);
-
-    useEffect(() => {
-        for (const player of players) {
-            if (!knownPlayersRef.current.has(player.id) && !player.isCurrent) {
-                toast(`🎮 ${player.name} a rejoint la partie !`);
-            }
-            knownPlayersRef.current.add(player.id);
-        }
-    }, [players, toast]);
+    }, [guesses, currentPlayerId, presentPlayers]);
 
     return players;
 }

@@ -1,4 +1,5 @@
 import { Guess } from "@/models/Guess";
+import { Card, CardContent } from "@/components/ui/8bit/card";
 import type { PlayerSummary } from "@/hooks/usePlayers";
 
 interface PlayerSidebarProps {
@@ -7,16 +8,13 @@ interface PlayerSidebarProps {
 
 export function PlayerSidebar({ players }: PlayerSidebarProps) {
     return (
-        <aside className="w-64 p-4 border-r border-gray-700 hidden md:block">
-            <h2 className="retro text-lg mb-4">👥 Joueurs ({players.length})</h2>
+        <aside className="w-64 p-4 hidden md:block sticky top-0">
+            <h2 className="retro text-lg mb-4">Joueurs ({players.length})</h2>
             <div className="space-y-2">
                 {players.map((player) => (
-                    <div
+                    <Card
                         key={player.id}
-                        className={`p-3 rounded border ${player.isCurrent
-                                ? "border-primary bg-primary/10"
-                                : "border-gray-700"
-                            }`}
+                        className={`${player.isCurrent && "[&>div]:!border-red-300 !border-red-300"} p-4`}
                     >
                         <div className="font-medium truncate">
                             {player.displayName}
@@ -28,7 +26,7 @@ export function PlayerSidebar({ players }: PlayerSidebarProps) {
                                 {player.bestScore}%
                             </span>
                         </div>
-                    </div>
+                    </Card>
                 ))}
                 {players.length === 0 && (
                     <div className="text-gray-500 text-sm">
