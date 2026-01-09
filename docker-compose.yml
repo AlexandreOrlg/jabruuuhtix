@@ -1,9 +1,8 @@
 services:
-  # Backend API
   embedding-api:
     build: ./backend
     ports:
-      - "8081:8081"
+      - 8081:8081
     volumes:
       - fasttext-cache:/app/.cache/fasttext
     env_file:
@@ -12,13 +11,30 @@ services:
       - FASTTEXT_CACHE_DIR=/app/.cache/fasttext
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8081/health
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-
-  # Frontend
+    labels:
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-web.rule=Host(`jabruuuhtix.xelandre.me`) && PathPrefix(`/api`)
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-web.entrypoints=web
+      - traefik.http.services.jabruuuhtix-prod-fuxmeg-3-web.loadbalancer.server.port=8081
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-web.service=jabruuuhtix-prod-fuxmeg-3-web
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-web.middlewares=redirect-to-https@file
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-websecure.rule=Host(`jabruuuhtix.xelandre.me`) && PathPrefix(`/api`)
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-websecure.entrypoints=websecure
+      - traefik.http.services.jabruuuhtix-prod-fuxmeg-3-websecure.loadbalancer.server.port=8081
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-websecure.service=jabruuuhtix-prod-fuxmeg-3-websecure
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-3-websecure.tls.certresolver=letsencrypt
+      - traefik.enable=true
+    networks:
+      - dokploy-network
   frontend:
     build:
       context: ./frontend
@@ -27,11 +43,28 @@ services:
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
         - VITE_API_URL=${VITE_API_URL:-http://localhost:8081}
     ports:
-      - "3001:80"
+      - 3001:80
     depends_on:
       - embedding-api
     restart: unless-stopped
-
+    labels:
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-web.rule=Host(`jabruuuhtix.xelandre.me`)
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-web.entrypoints=web
+      - traefik.http.services.jabruuuhtix-prod-fuxmeg-4-web.loadbalancer.server.port=80
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-web.service=jabruuuhtix-prod-fuxmeg-4-web
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-web.middlewares=redirect-to-https@file
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-websecure.rule=Host(`jabruuuhtix.xelandre.me`)
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-websecure.entrypoints=websecure
+      - traefik.http.services.jabruuuhtix-prod-fuxmeg-4-websecure.loadbalancer.server.port=80
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-websecure.service=jabruuuhtix-prod-fuxmeg-4-websecure
+      - traefik.http.routers.jabruuuhtix-prod-fuxmeg-4-websecure.tls.certresolver=letsencrypt
+      - traefik.enable=true
+    networks:
+      - dokploy-network
 volumes:
   fasttext-cache:
     driver: local
+networks:
+  dokploy-network:
+    external: true
