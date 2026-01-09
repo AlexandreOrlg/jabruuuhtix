@@ -3,6 +3,7 @@ import { supabase, API_URL } from "@/lib/supabase";
 import type {
     Room,
     Guess,
+    Player,
     CreateRoomResponse,
     SubmitGuessResponse,
 } from "@/lib/types";
@@ -11,6 +12,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 interface UseRoomReturn {
     room: Room | null;
     guesses: Guess[];
+    players: Player[];
     isLoading: boolean;
     error: string | null;
     bestScore: number;
@@ -28,6 +30,7 @@ interface UseRoomReturn {
 export function useRoom(): UseRoomReturn {
     const [room, setRoom] = useState<Room | null>(null);
     const [guesses, setGuesses] = useState<Guess[]>([]);
+    const [players, setPlayers] = useState<Player[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [channel, setChannel] = useState<RealtimeChannel | null>(null);
@@ -81,6 +84,26 @@ export function useRoom(): UseRoomReturn {
                     setRoom(updatedRoom);
                 }
             )
+            // Presence for player tracking
+            .on("presence", { event: "sync" }, () => {
+                const state = roomChannel.presenceState();
+                const presentPlayers: Player[] = [];
+
+                for (const key in state) {
+                    const presences = state[key] as unknown as Array<{ id: string; name: string; joinedAt: string }>;
+                    for (const presence of presences) {
+                        if (presence.id && presence.name) {
+                            presentPlayers.push({
+                                id: presence.id,
+                                name: presence.name,
+                                joinedAt: presence.joinedAt || new Date().toISOString(),
+                            });
+                        }
+                    }
+                }
+
+                setPlayers(presentPlayers);
+            })
             .subscribe();
 
         setChannel(roomChannel);
@@ -243,6 +266,7 @@ export function useRoom(): UseRoomReturn {
     return {
         room,
         guesses,
+        players,
         isLoading,
         error,
         bestScore,

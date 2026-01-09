@@ -16,6 +16,12 @@ export interface Guess {
     created_at: string;
 }
 
+export interface Player {
+    id: string;
+    name: string;
+    joinedAt: string;
+}
+
 export interface CreateRoomResponse {
     roomId: string;
     roomCode: string;
@@ -30,3 +36,4 @@ export interface SubmitGuessResponse {
     createdAt: string;
     revealedWord: string | null;
 }
+

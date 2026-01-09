@@ -1,4 +1,4 @@
-# Default French words for Jabrrutix
+# Default French words for Jabruuuhtix
 # Add your own words (one per line)
 musique
 voiture

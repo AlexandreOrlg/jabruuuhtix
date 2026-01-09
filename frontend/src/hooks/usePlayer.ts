@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 
-const PLAYER_ID_KEY = "jabrrutix_player_id";
-const PLAYER_NAME_KEY = "jabrrutix_player_name";
+const PLAYER_ID_KEY = "Jabruuuhtix_player_id";
+const PLAYER_NAME_KEY = "Jabruuuhtix_player_name";
 
 export function usePlayer() {
     // Get or create player ID

@@ -71,14 +71,14 @@ app.include_router(guesses.router)
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "jabrrutix-api"}
+    return {"status": "healthy", "service": "Jabruuuhtix-api"}
 
 
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {
-        "message": "Jabrrutix API",
+        "message": "Jabruuuhtix API",
         "docs": "/docs",
         "health": "/health"
     }

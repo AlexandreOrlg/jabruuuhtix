@@ -1,4 +1,4 @@
-# 🎮 Jabrrutix
+# 🎮 Jabruuuhtix
 
 > Jeu de mots temps réel basé sur la similarité sémantique (embeddings fastText).
 
@@ -9,7 +9,7 @@
 
 ## 🎯 Concept
 
-Jabrrutix est un jeu multijoueur en temps réel où les joueurs doivent deviner un mot secret. Chaque proposition est évaluée par similarité sémantique grâce aux embeddings fastText. Plus votre mot est "proche" du mot secret, plus votre score est élevé !
+Jabruuuhtix est un jeu multijoueur en temps réel où les joueurs doivent deviner un mot secret. Chaque proposition est évaluée par similarité sémantique grâce aux embeddings fastText. Plus votre mot est "proche" du mot secret, plus votre score est élevé !
 
 - **Score 100** = Vous avez trouvé le mot exact !
 - **Score 80+** = Très proche

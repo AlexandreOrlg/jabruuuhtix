@@ -1,5 +1,6 @@
 import "@/components/ui/8bit/styles/retro.css";
 import { useEffect } from "react";
+import { Toaster } from "@/components/ui/sonner";
 import { useRoom } from "@/hooks/useRoom";
 import { usePlayer } from "@/hooks/usePlayer";
 import { HomeScreen } from "@/components/HomeScreen";
@@ -69,32 +70,37 @@ function App() {
   // Show game screen if in a room
   if (room) {
     return (
-      <GameScreen
-        roomCode={room.code}
-        guesses={guesses}
-        bestScore={bestScore}
-        revealedWord={revealedWord}
-        playerId={playerId}
-        onSubmitGuess={handleSubmitGuess}
-        onLeaveRoom={leaveRoom}
-        isLoading={isLoading}
-        error={error}
-      />
+      <>
+        <GameScreen
+          roomCode={room.code}
+          guesses={guesses}
+          bestScore={bestScore}
+          revealedWord={revealedWord}
+          playerId={playerId}
+          onSubmitGuess={handleSubmitGuess}
+          onLeaveRoom={leaveRoom}
+          isLoading={isLoading}
+          error={error}
+        />
+        <Toaster position="top-right" />
+      </>
     );
   }
 
   // Show home screen
   return (
-    <HomeScreen
-      playerName={playerName}
-      onPlayerNameChange={setPlayerName}
-      onCreateRoom={handleCreateRoom}
-      onJoinRoom={handleJoinRoom}
-      isLoading={isLoading}
-      error={error}
-    />
+    <>
+      <HomeScreen
+        playerName={playerName}
+        onPlayerNameChange={setPlayerName}
+        onCreateRoom={handleCreateRoom}
+        onJoinRoom={handleJoinRoom}
+        isLoading={isLoading}
+        error={error}
+      />
+      <Toaster position="top-right" />
+    </>
   );
 }
 
 export default App;
-
