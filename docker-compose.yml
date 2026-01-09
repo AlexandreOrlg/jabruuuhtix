@@ -2,8 +2,6 @@ services:
   # Backend API
   embedding-api:
     build: ./backend
-    ports:
-      - "8081:8081"
     volumes:
       - fasttext-cache:/app/.cache/fasttext
     env_file:
@@ -20,8 +18,6 @@ services:
         - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
         - VITE_API_URL=${VITE_API_URL:-http://localhost:8081}
-    ports:
-      - "3001:80"
     depends_on:
       - embedding-api
     restart: unless-stopped

@@ -6,7 +6,8 @@ import {
     CardContent,
 } from "@/components/ui/8bit/card";
 import { Button } from "@/components/ui/8bit/button";
-import { Input } from "@/components/ui/8bit/input";
+import { PlayerNameForm } from "./PlayerNameForm";
+import { RoomCodeForm } from "./RoomCodeForm";
 
 interface HomeScreenProps {
     playerName: string;
@@ -41,7 +42,6 @@ export function HomeScreen({
     return (
         <div className="min-h-screen flex items-center justify-center">
             <div className="w-full max-w-md">
-                {/* Title */}
                 <div className="text-center mb-8">
                     <h1
                         className="retro text-4xl md:text-5xl font-bold text-yellow-400 mb-2 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]"
@@ -58,21 +58,11 @@ export function HomeScreen({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {/* Player name input */}
-                        <div>
-                            <label className="block text-sm mb-1">Pseudo</label>
-                            <Input
-                                type="text"
-                                placeholder="Votre pseudo..."
-                                value={playerName}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                    onPlayerNameChange(e.target.value)
-                                }
-                                maxLength={32}
-                            />
-                        </div>
+                        <PlayerNameForm
+                            playerName={playerName}
+                            onPlayerNameChange={onPlayerNameChange}
+                        />
 
-                        {/* Error message */}
                         {error && (
                             <div className="p-3 bg-red-900/50 border border-red-500 text-red-300 text-sm rounded">
                                 {error}
@@ -81,7 +71,6 @@ export function HomeScreen({
 
                         {mode === "main" ? (
                             <div className="flex flex-col gap-2 mt-8">
-                                {/* Create room button */}
                                 <Button
                                     onClick={handleCreateRoom}
                                     disabled={isLoading || !playerName.trim()}
@@ -90,7 +79,6 @@ export function HomeScreen({
                                     {isLoading ? "Création..." : "🎲 Créer une salle"}
                                 </Button>
 
-                                {/* Join room button */}
                                 <Button
                                     onClick={() => setMode("join")}
                                     disabled={isLoading}
@@ -102,32 +90,21 @@ export function HomeScreen({
                             </div>
                         ) : (
                             <div className="flex flex-col gap-2 mt-8">
-                                {/* Room code input */}
-                                <div>
-                                    <label className="block text-sm text-gray-300 mb-1">
-                                        Code de la salle
-                                    </label>
-                                    <Input
-                                        type="text"
-                                        placeholder="ABC123"
-                                        value={roomCode}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                            setRoomCode(e.target.value.toUpperCase())
-                                        }
-                                        maxLength={6}
-                                    />
-                                </div>
+                                <RoomCodeForm
+                                    roomCode={roomCode}
+                                    onRoomCodeChange={setRoomCode}
+                                />
 
-                                {/* Join button */}
                                 <Button
                                     onClick={handleJoinRoom}
-                                    disabled={isLoading || !playerName.trim() || !roomCode.trim()}
+                                    disabled={
+                                        isLoading || !playerName.trim() || !roomCode.trim()
+                                    }
                                     className="w-full"
                                 >
                                     {isLoading ? "Connexion..." : "🎮 Rejoindre"}
                                 </Button>
 
-                                {/* Back button */}
                                 <Button
                                     onClick={() => setMode("main")}
                                     disabled={isLoading}

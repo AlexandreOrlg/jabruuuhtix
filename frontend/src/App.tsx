@@ -3,14 +3,18 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { useRoom } from "@/hooks/useRoom";
 import { usePlayer } from "@/hooks/usePlayer";
-import { HomeScreen } from "@/components/HomeScreen";
-import { GameScreen } from "@/components/GameScreen";
+import { useUrlSync } from "@/hooks/useUrlSync";
+import { HomeScreen } from "@/components/screens/HomeScreen/HomeScreen";
+import { GameScreen } from "@/components/screens/GameScreen/GameScreen";
+
+
 
 function App() {
   const { playerId, playerName, setPlayerName } = usePlayer();
   const {
     room,
     guesses,
+    submittedWords,
     isLoading,
     error,
     bestScore,
@@ -19,38 +23,19 @@ function App() {
     joinRoom,
     submitGuess,
     leaveRoom,
-  } = useRoom();
+  } = useRoom({ playerId, playerName });
 
-  // Sync room code with URL
-  useEffect(() => {
-    if (room) {
-      // Update URL when joining a room
-      const url = new URL(window.location.href);
-      url.searchParams.set("room", room.code);
-      window.history.replaceState({}, "", url.toString());
-    } else {
-      // Remove room from URL when leaving
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("room")) {
-        url.searchParams.delete("room");
-        window.history.replaceState({}, "", url.toString());
-      }
-    }
-  }, [room]);
+  const initialRoomCode = useUrlSync(room?.code ?? null);
 
   // Auto-join room from URL on load
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const roomCode = url.searchParams.get("room");
-
-    if (roomCode && !room && playerName) {
-      joinRoom(roomCode);
-    }
-  }, [playerName]); // Only run when playerName is set
+    if (!initialRoomCode || room || !playerName) return;
+    joinRoom(initialRoomCode);
+  }, [initialRoomCode, room, playerName, joinRoom]);
 
   // Handle room creation
   const handleCreateRoom = async () => {
-    await createRoom(playerName);
+    await createRoom();
   };
 
   // Handle room joining
@@ -60,7 +45,7 @@ function App() {
 
   // Handle guess submission
   const handleSubmitGuess = async (word: string) => {
-    const result = await submitGuess(playerId, playerName, word);
+    const result = await submitGuess(word);
     if (result) {
       return { score: result.score };
     }
@@ -68,38 +53,45 @@ function App() {
   };
 
   // Show game screen if in a room
-  if (room) {
-    return (
-      <>
-        <GameScreen
-          roomCode={room.code}
-          guesses={guesses}
-          bestScore={bestScore}
-          revealedWord={revealedWord}
-          playerId={playerId}
-          onSubmitGuess={handleSubmitGuess}
-          onLeaveRoom={leaveRoom}
-          isLoading={isLoading}
-          error={error}
-        />
-        <Toaster position="top-right" />
-      </>
-    );
-  }
-
-  // Show home screen
   return (
-    <>
-      <HomeScreen
-        playerName={playerName}
-        onPlayerNameChange={setPlayerName}
-        onCreateRoom={handleCreateRoom}
-        onJoinRoom={handleJoinRoom}
-        isLoading={isLoading}
-        error={error}
-      />
+    <div className="flex min-h-screen flex-col">
+      <main className="flex-1">
+        {room ? (
+          <GameScreen
+            roomCode={room.code}
+            guesses={guesses}
+            bestScore={bestScore}
+            revealedWord={revealedWord}
+            playerId={playerId}
+            submittedWords={submittedWords}
+            onSubmitGuess={handleSubmitGuess}
+            onLeaveRoom={leaveRoom}
+            isLoading={isLoading}
+            error={error}
+          />
+        ) : (
+          <HomeScreen
+            playerName={playerName}
+            onPlayerNameChange={setPlayerName}
+            onCreateRoom={handleCreateRoom}
+            onJoinRoom={handleJoinRoom}
+            isLoading={isLoading}
+            error={error}
+          />
+        )}
+      </main>
+
+      <footer className="retro absolute bottom-0 left-0 right-0 border-t border-white/10 bg-black/30 px-4 py-3 text-center text-[10px] text-white/70">
+        Réalisé avec le
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60" height={24} className="inline mx-3"><path fill="#fff" d="M12 18h6v6h-6v-6ZM18 6h6v6h-6V6Zm-6 0h6v6h-6V6Zm12 6h6v6h-6v-6Zm6 0h6v6h-6v-6Zm6-6h6v6h-6V6Zm6 0h6v6h-6V6Zm6 0h6v6h-6V6Zm6 6h6v6h-6v-6Zm0 6h6v6h-6v-6ZM6 6h6v6H6V6Zm-6 6h6v6H0v-6Zm0 6h6v6H0v-6Zm0 6h6v6H0v-6Zm54 0h6v6h-6v-6ZM6 30h6v6H6v-6Zm6 6h6v6h-6v-6Zm6 6h6v6h-6v-6Zm6 6h6v6h-6v-6Zm6 0h6v6h-6v-6Zm6-6h6v6h-6v-6Zm6-6h6v6h-6v-6Zm6-6h6v6h-6v-6Z" /><path fill="#9D0000" d="M6 12h6v6H6v-6Z" /><path fill="red" d="M12 12h6v6h-6v-6Zm6 0h6v6h-6v-6Z" /><path fill="#9D0000" d="M6 18h6v6H6v-6Z" /><path fill="red" d="M12 18h6v6h-6v-6Zm6 0h6v6h-6v-6Z" /><path fill="#9D0000" d="M6 24h6v6H6v-6Z" /><path fill="red" d="M12 24h6v6h-6v-6Zm6 0h6v6h-6v-6Z" /><path fill="#9D0000" d="M12 30h6v6h-6v-6Z" /><path fill="red" d="M18 30h6v6h-6v-6Z" /><path fill="#9D0000" d="M18 36h6v6h-6v-6Z" /><path fill="red" d="M24 36h6v6h-6v-6Z" /><path fill="#9D0000" d="M24 42h6v6h-6v-6Z" /><path fill="red" d="M30 42h6v6h-6v-6Zm0-6h6v6h-6v-6Zm-6-6h6v6h-6v-6Zm6 0h6v6h-6v-6Zm0-6h6v6h-6v-6Zm-6 0h6v6h-6v-6Zm0-6h6v6h-6v-6Zm6 0h6v6h-6v-6Zm6 6h6v6h-6v-6Zm6 6h6v6h-6v-6Zm-6 0h6v6h-6v-6Zm0 6h6v6h-6v-6Zm6-12h6v6h-6v-6Z" /><path fill="#FF5757" d="M48 24h6v6h-6v-6Z" /><path fill="red" d="M36 18h6v6h-6v-6Zm6 0h6v6h-6v-6Z" /><path fill="#FF5757" d="M48 18h6v6h-6v-6Zm0-6h6v6h-6v-6Zm-6 0h6v6h-6v-6Zm-6 0h6v6h-6v-6Z" /></svg>
+        sous le
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 78 78" height={24} className="inline mx-3"><g clip-path=" url(#a)"><path fill="#FFC41D" d="M46 20.5c-4.833.667-14.8 1.6-16 0V24l-7.5 6.5L22 46l10 11 14-.5 9-9.5V31l-4.5-3.5-4.5-7Z" /><path fill="#fff" d="M24 30v-6h6v6h-6ZM30 24v-6h6v6h-6ZM36 24v-6h6v6h-6ZM42 24v-6h6v6h-6ZM48 30v-6h6v6h-6ZM60 18v-6h6v6h-6ZM18 60v6h-6v-6h6ZM18 18v-6h6v6h-6ZM60 60v6h-6v-6h6ZM66 12V6h6v6h-6ZM12 66v6H6v-6h6ZM12 12V6h6v6h-6ZM66 66v6h-6v-6h6ZM36 12V6h6v6h-6ZM42 66v6h-6v-6h6ZM66 36h6v6h-6v-6ZM12 42H6v-6h6v6ZM0 36h6v6H0v-6ZM78 42h-6v-6h6v6ZM36 6V0h6v6h-6ZM42 72v6h-6v-6h6ZM54 36v-6h6v6h-6ZM54 42v-6h6v6h-6ZM54 48v-6h6v6h-6ZM48 54v-6h6v6h-6ZM42 60v-6h6v6h-6ZM36 60v-6h6v6h-6ZM30 60v-6h6v6h-6ZM24 54v-6h6v6h-6ZM18 48v-6h6v6h-6ZM18 42v-6h6v6h-6ZM18 36v-6h6v6h-6Z" /></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h78v78H0z" /></clipPath></defs></svg>
+        de Marseille
+      </footer >
+
+
       <Toaster position="top-right" />
-    </>
+    </div >
   );
 }
 
