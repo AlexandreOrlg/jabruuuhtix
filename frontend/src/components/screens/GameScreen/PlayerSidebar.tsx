@@ -1,5 +1,5 @@
 import { Guess } from "@/models/Guess";
-import { Card, CardContent } from "@/components/ui/8bit/card";
+import { Card } from "@/components/ui/8bit/card";
 import type { PlayerSummary } from "@/hooks/usePlayers";
 
 interface PlayerSidebarProps {
