@@ -52,7 +52,7 @@ possible so new contributors can understand changes on first read.
 - `docker-compose.dev.yml` exposes API on 8081 and Vite on 3001. The production
   compose file does not expose ports.
 - The backend downloads the fastText model on first start (large download); keep
-  `FASTTEXT_*` and `HF_TOKEN` settings documented in README and `.env.example`.
+  `FASTTEXT_*` settings documented in README and `.env.example`.
 
 ## MCP Tooling workflow
 

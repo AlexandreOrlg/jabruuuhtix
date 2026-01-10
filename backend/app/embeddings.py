@@ -34,7 +34,6 @@ def load_model() -> fasttext.FastText._FastText:
             repo_id=settings.fasttext_repo_id,
             filename=settings.fasttext_filename,
             cache_dir=str(cache_dir),
-            token=settings.hf_token if settings.hf_token else None,
             local_dir=str(cache_dir),
         )
         logger.info(f"Model downloaded to {downloaded_path}")
@@ -180,4 +179,3 @@ def compute_score(embedding1: list[float], embedding2: list[float]) -> int:
     raw_sim = compute_raw_similarity(embedding1, embedding2)
     score = round(max(0, raw_sim) * 100)
     return min(100, max(0, score))
-

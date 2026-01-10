@@ -24,7 +24,6 @@ Jabruuuhtix est un jeu multijoueur en temps réel où les joueurs doivent devine
 
 - Docker & Docker Compose
 - Un projet Supabase
-- Un token Hugging Face (pour télécharger le modèle fastText)
 
 ### 1. Configuration
 
@@ -41,7 +40,6 @@ Remplissez `.env` avec vos valeurs :
 # Backend
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-HF_TOKEN=your-huggingface-token
 
 # Frontend (passées au build Docker)
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -76,7 +74,7 @@ Pour Dokploy, configurez chaque service séparément :
 **Backend (embedding-api)**
 - Build context: `./backend`
 - Port: `8081`
-- Variables d'env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `HF_TOKEN`
+- Variables d'env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
 **Frontend**
 - Build context: `./frontend`
@@ -141,7 +139,6 @@ Soumet une proposition de mot.
 |----------|-------------|
 | `SUPABASE_URL` | URL du projet Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clé service role |
-| `HF_TOKEN` | Token Hugging Face |
 | `VITE_SUPABASE_URL` | URL Supabase (frontend) |
 | `VITE_SUPABASE_ANON_KEY` | Clé anon (frontend) |
 | `VITE_API_URL` | URL de l'API (défaut: `http://localhost:8081`) |

@@ -13,9 +13,6 @@ class Settings(BaseSettings):
     fasttext_filename: str = "model.bin"
     fasttext_cache_dir: str = "./.cache/fasttext"
 
-    # Hugging Face
-    hf_token: str = ""
-
     # CORS
     cors_origins: str = "*"
 
