@@ -43,13 +43,18 @@ export function HomeScreen({
 
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-xl">
                 <div className="text-center mb-8">
+                    <img
+                        src="/favicon.svg"
+                        alt="Jabruuuhtix"
+                        className="mx-auto mb-1 h-32"
+                    />
                     <h1
                         className="retro text-4xl md:text-5xl font-bold text-yellow-400 mb-2 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]"
                         style={{ textShadow: "5px 5px 0 #000, -1px -1px 0 #000" }}
                     >
-                        🎮 Jabruuuhtix
+                        Jabruuuhtix
                     </h1>
                 </div>
 
