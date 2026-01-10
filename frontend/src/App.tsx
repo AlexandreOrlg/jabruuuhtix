@@ -6,6 +6,7 @@ import { usePlayer } from "@/hooks/usePlayer";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { HomeScreen } from "@/components/screens/HomeScreen/HomeScreen";
 import { GameScreen } from "@/components/screens/GameScreen/GameScreen";
+import type { RoomMode } from "@/models/Room";
 
 
 
@@ -35,8 +36,8 @@ function App() {
   }, [initialRoomCode, room, playerName, joinRoom]);
 
   // Handle room creation
-  const handleCreateRoom = async () => {
-    await createRoom();
+  const handleCreateRoom = async (mode: RoomMode) => {
+    await createRoom(mode);
   };
 
   // Handle room joining
@@ -62,6 +63,7 @@ function App() {
             roomCode={room.code}
             guesses={guesses}
             presentPlayers={presentPlayers}
+            roomMode={room.mode}
             bestScore={bestScore}
             revealedWord={revealedWord}
             playerId={playerId}

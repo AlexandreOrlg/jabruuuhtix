@@ -46,6 +46,7 @@ async def submit_guess(request: SubmitGuessRequest):
     
     room = room_result.data
     room_id = room["id"]
+    room_mode = room.get("mode", "coop")
     
     # Check if room already has revealed word
     if room.get("revealed_word"):
@@ -100,11 +101,12 @@ async def submit_guess(request: SubmitGuessRequest):
         # If score is 100, reveal the word
         revealed_word = None
         if score == 100:
-            supabase.table("rooms").update({
-                "revealed_word": secret_word,
-                "status": "finished"
-            }).eq("id", room_id).execute()
             revealed_word = secret_word
+            if room_mode == "coop":
+                supabase.table("rooms").update({
+                    "revealed_word": secret_word,
+                    "status": "finished"
+                }).eq("id", room_id).execute()
         
         return SubmitGuessResponse(
             guessId=guess_data["id"],

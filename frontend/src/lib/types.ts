@@ -3,6 +3,7 @@ export interface Room {
     code: string;
     status: "active" | "finished";
     revealed_word: string | null;
+    mode: "coop" | "jcj";
     created_at: string;
 }
 
@@ -36,4 +37,3 @@ export interface SubmitGuessResponse {
     createdAt: string;
     revealedWord: string | null;
 }
-

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from typing import Literal
 from supabase import create_client
 import random
 import string
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
 class CreateRoomRequest(BaseModel):
     playerName: str = Field(..., max_length=32)
+    mode: Literal["coop", "jcj"] = "coop"
 
 
 class CreateRoomResponse(BaseModel):
@@ -40,15 +42,8 @@ def get_random_secret_word() -> str:
             words = [line.strip().lower() for line in f if line.strip()]
         if words:
             return random.choice(words)
-    
-    # Fallback word list if file doesn't exist
-    default_words = [
-        "musique", "voiture", "maison", "soleil", "jardin",
-        "livre", "cuisine", "voyage", "plage", "montagne",
-        "chocolat", "fromage", "cinema", "theatre", "sport",
-        "ordinateur", "telephone", "television", "internet", "restaurant"
-    ]
-    return random.choice(default_words)
+
+    raise HTTPException(status_code=500, detail="words.txt is missing or empty")
 
 
 @router.post("", response_model=CreateRoomResponse)
@@ -64,6 +59,7 @@ async def create_room(request: CreateRoomRequest):
     # Generate room code and secret word
     room_code = generate_room_code()
     secret_word = get_random_secret_word()
+    mode = request.mode
     
     # Compute embedding for secret word
     try:
@@ -84,7 +80,8 @@ async def create_room(request: CreateRoomRequest):
         # Insert room
         room_result = supabase.table("rooms").insert({
             "code": room_code,
-            "status": "active"
+            "status": "active",
+            "mode": mode,
         }).execute()
         
         if not room_result.data:
@@ -111,4 +108,3 @@ async def create_room(request: CreateRoomRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-

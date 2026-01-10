@@ -12,9 +12,14 @@ import type { Guess } from "@/models/Guess";
 interface GuessesTableProps {
     guesses: Guess[];
     playerId: string;
+    revealAllWords: boolean;
 }
 
-export function GuessesTable({ guesses, playerId }: GuessesTableProps) {
+export function GuessesTable({
+    guesses,
+    playerId,
+    revealAllWords,
+}: GuessesTableProps) {
     if (guesses.length === 0) {
         return (
             <div className="text-center text-gray-500 py-8">
@@ -38,7 +43,11 @@ export function GuessesTable({ guesses, playerId }: GuessesTableProps) {
                         key={guess.id}
                         className={guess.belongsTo(playerId) ? "bg-primary/10" : ""}
                     >
-                        <TableCell className="font-medium">{guess.word}</TableCell>
+                        <TableCell className="font-medium">
+                            {!revealAllWords && !guess.belongsTo(playerId)
+                                ? "****"
+                                : guess.word}
+                        </TableCell>
                         <TableCell>{guess.playerName}</TableCell>
                         <TableCell className="text-right">
                             <Badge variant="secondary" className={guess.scoreColor}>

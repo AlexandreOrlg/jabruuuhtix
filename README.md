@@ -15,6 +15,8 @@ Jabruuuhtix est un jeu multijoueur en temps réel où les joueurs doivent devine
 - **Score 80+** = Très proche
 - **Score 50+** = Vous vous rapprochez
 - **Score < 50** = Continuez à chercher
+- **Modes** : COOP (tout le monde voit les propositions) / JCJ (les mots des
+  autres sont masqués tant que vous n'avez pas trouvé le mot)
 
 ## 🚀 Installation
 
@@ -49,10 +51,11 @@ VITE_API_URL=https://your-api-domain.com  # URL publique de l'API
 
 ### 2. Base de données
 
-Exécutez le script SQL dans votre projet Supabase :
+Exécutez les scripts SQL dans votre projet Supabase :
 ```bash
 # Via Supabase CLI ou copier/coller dans l'éditeur SQL
 cat supabase/migrations/001_init.sql
+cat supabase/migrations/002_room_mode.sql
 ```
 
 ### 3. Déploiement Docker

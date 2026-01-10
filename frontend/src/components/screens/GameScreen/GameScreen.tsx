@@ -1,5 +1,6 @@
-import type { Guess } from "@/models/Guess";
+import { Guess } from "@/models/Guess";
 import type { PlayerData } from "@/models/Player";
+import type { RoomMode } from "@/models/Room";
 import { usePlayers } from "@/hooks/usePlayers";
 import { GameHeader } from "./GameHeader";
 import { ScoreCard } from "./ScoreCard";
@@ -12,6 +13,7 @@ interface GameScreenProps {
     roomCode: string;
     guesses: Guess[];
     presentPlayers: PlayerData[];
+    roomMode: RoomMode;
     bestScore: number;
     revealedWord: string | null;
     playerId: string;
@@ -26,6 +28,7 @@ export function GameScreen({
     roomCode,
     guesses,
     presentPlayers,
+    roomMode,
     bestScore,
     revealedWord,
     playerId,
@@ -36,6 +39,11 @@ export function GameScreen({
     error,
 }: GameScreenProps) {
     const players = usePlayers(guesses, playerId, presentPlayers);
+    const revealAllWords = roomMode === "coop" || Boolean(revealedWord);
+    const displayedBestScore =
+        roomMode === "jcj"
+            ? Guess.getBestScore(guesses.filter((guess) => guess.belongsTo(playerId)))
+            : bestScore;
 
     return (
         <div className="min-h-screen flex overflow-auto h-full">
@@ -43,11 +51,17 @@ export function GameScreen({
 
             <div className="flex-1 p-4">
                 <div className="max-w-2xl mx-auto">
-                    <GameHeader roomCode={roomCode} onLeaveRoom={onLeaveRoom} />
+                    <GameHeader
+                        roomCode={roomCode}
+                        roomMode={roomMode}
+                        onLeaveRoom={onLeaveRoom}
+                    />
 
-                    <ScoreCard bestScore={bestScore} />
+                    <ScoreCard bestScore={displayedBestScore} />
 
-                    {revealedWord && <VictoryBanner revealedWord={revealedWord} />}
+                    {revealedWord && (
+                        <VictoryBanner revealedWord={revealedWord} />
+                    )}
 
                     {!revealedWord && (
                         <GuessForm
@@ -64,7 +78,11 @@ export function GameScreen({
                     )}
 
                     <div className="mt-8 w-full [&>div]:w-full">
-                        <GuessesTable guesses={guesses} playerId={playerId} />
+                        <GuessesTable
+                            guesses={guesses}
+                            playerId={playerId}
+                            revealAllWords={revealAllWords}
+                        />
                     </div>
                 </div>
             </div>

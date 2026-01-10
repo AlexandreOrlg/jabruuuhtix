@@ -1,8 +1,11 @@
+export type RoomMode = "coop" | "jcj";
+
 export interface RoomData {
     id: string;
     code: string;
     status: "active" | "finished";
     revealed_word: string | null;
+    mode: RoomMode;
     created_at: string;
 }
 
@@ -11,6 +14,7 @@ export class Room {
     readonly code: string;
     readonly status: "active" | "finished";
     readonly revealedWord: string | null;
+    readonly mode: RoomMode;
     readonly createdAt: Date;
 
     constructor(data: RoomData) {
@@ -18,6 +22,7 @@ export class Room {
         this.code = data.code;
         this.status = data.status;
         this.revealedWord = data.revealed_word;
+        this.mode = data.mode;
         this.createdAt = new Date(data.created_at);
     }
 
@@ -47,6 +52,7 @@ export class Room {
             code: this.code,
             status: "finished",
             revealed_word: word,
+            mode: this.mode,
             created_at: this.createdAt.toISOString(),
         });
     }

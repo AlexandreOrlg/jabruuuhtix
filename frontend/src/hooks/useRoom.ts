@@ -4,7 +4,7 @@ import { fetchGuessesByRoomId, submitGuess } from "@/api/guesses";
 import { useGuesses } from "@/hooks/useGuesses";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import { Guess } from "@/models/Guess";
-import type { Room } from "@/models/Room";
+import type { Room, RoomMode } from "@/models/Room";
 import type { PlayerData } from "@/models/Player";
 import type { SubmitGuessResponse } from "@/lib/types";
 import { toast } from "@/components/ui/8bit/toast";
@@ -23,7 +23,7 @@ interface UseRoomReturn {
     error: string | null;
     bestScore: number;
     revealedWord: string | null;
-    createRoom: () => Promise<Room | null>;
+    createRoom: (mode: RoomMode) => Promise<Room | null>;
     joinRoom: (roomCode: string) => Promise<boolean>;
     submitGuess: (word: string) => Promise<SubmitGuessResponse | null>;
     leaveRoom: () => void;
@@ -49,8 +49,11 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     const handleGuessInsert = useCallback(
         (newGuess: Guess) => {
             addGuess(newGuess);
+            if (newGuess.isWinning && room?.mode === "coop") {
+                setRoom((prev) => (prev ? prev.withRevealedWord(newGuess.word) : prev));
+            }
         },
-        [addGuess]
+        [addGuess, room?.mode]
     );
 
     const mergePlayers = useCallback(
@@ -112,25 +115,28 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         onPresenceLeave: handlePresenceLeave,
     });
 
-    const createRoomHandler = useCallback(async (): Promise<Room | null> => {
-        setIsLoading(true);
-        setError(null);
+    const createRoomHandler = useCallback(
+        async (mode: RoomMode): Promise<Room | null> => {
+            setIsLoading(true);
+            setError(null);
 
-        try {
-            const newRoom = await createRoom(playerName);
-            setRoom(newRoom);
-            replaceGuesses([]);
-            setPresentPlayers([]);
-            knownPlayersRef.current = new Set();
-            return newRoom;
-        } catch (err) {
-            const message = err instanceof Error ? err.message : "Unknown error";
-            setError(message);
-            return null;
-        } finally {
-            setIsLoading(false);
-        }
-    }, [playerName, replaceGuesses]);
+            try {
+                const newRoom = await createRoom(playerName, mode);
+                setRoom(newRoom);
+                replaceGuesses([]);
+                setPresentPlayers([]);
+                knownPlayersRef.current = new Set();
+                return newRoom;
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Unknown error";
+                setError(message);
+                return null;
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [playerName, replaceGuesses]
+    );
 
     const joinRoomHandler = useCallback(
         async (roomCode: string): Promise<boolean> => {
@@ -171,18 +177,18 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
             setIsLoading(true);
             setError(null);
 
-                try {
-                    const data = await submitGuess({
-                        roomCode: room.code,
-                        playerId,
-                        playerName,
-                        word,
-                    });
+            try {
+                const data = await submitGuess({
+                    roomCode: room.code,
+                    playerId,
+                    playerName,
+                    word,
+                });
 
-                    const revealedWord = data.revealedWord;
-                    if (revealedWord) {
-                        setRoom((prev) => (prev ? prev.withRevealedWord(revealedWord) : prev));
-                    }
+                const revealedWord = data.revealedWord;
+                if (revealedWord) {
+                    setRoom((prev) => (prev ? prev.withRevealedWord(revealedWord) : prev));
+                }
 
                 return data;
             } catch (err) {

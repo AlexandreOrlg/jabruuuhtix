@@ -8,11 +8,12 @@ import {
 import { Button } from "@/components/ui/8bit/button";
 import { PlayerNameForm } from "./PlayerNameForm";
 import { RoomCodeForm } from "./RoomCodeForm";
+import type { RoomMode } from "@/models/Room";
 
 interface HomeScreenProps {
     playerName: string;
     onPlayerNameChange: (name: string) => void;
-    onCreateRoom: () => Promise<void>;
+    onCreateRoom: (mode: RoomMode) => Promise<void>;
     onJoinRoom: (code: string) => Promise<void>;
     isLoading: boolean;
     error: string | null;
@@ -27,11 +28,12 @@ export function HomeScreen({
     error,
 }: HomeScreenProps) {
     const [roomCode, setRoomCode] = useState("");
-    const [mode, setMode] = useState<"main" | "join">("main");
+    const [screenMode, setScreenMode] = useState<"main" | "join">("main");
+    const [roomMode, setRoomMode] = useState<RoomMode>("coop");
 
     const handleCreateRoom = async () => {
         if (!playerName.trim()) return;
-        await onCreateRoom();
+        await onCreateRoom(roomMode);
     };
 
     const handleJoinRoom = async () => {
@@ -54,7 +56,7 @@ export function HomeScreen({
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-center">
-                            {mode === "main" ? "Bienvenue !" : "Rejoindre une salle"}
+                            {screenMode === "main" ? "Bienvenue !" : "Rejoindre une salle"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -69,8 +71,31 @@ export function HomeScreen({
                             </div>
                         )}
 
-                        {mode === "main" ? (
+                        {screenMode === "main" ? (
                             <div className="flex flex-col gap-2 mt-8">
+                                <div className="space-y-2">
+                                    <div className="text-xs text-gray-400 retro">
+                                        Mode de jeu
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Button
+                                            type="button"
+                                            variant={roomMode === "coop" ? "default" : "outline"}
+                                            onClick={() => setRoomMode("coop")}
+                                            disabled={isLoading}
+                                        >
+                                            COOP
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={roomMode === "jcj" ? "default" : "outline"}
+                                            onClick={() => setRoomMode("jcj")}
+                                            disabled={isLoading}
+                                        >
+                                            JCJ
+                                        </Button>
+                                    </div>
+                                </div>
                                 <Button
                                     onClick={handleCreateRoom}
                                     disabled={isLoading || !playerName.trim()}
@@ -80,7 +105,7 @@ export function HomeScreen({
                                 </Button>
 
                                 <Button
-                                    onClick={() => setMode("join")}
+                                    onClick={() => setScreenMode("join")}
                                     disabled={isLoading}
                                     variant="outline"
                                     className="w-full"
@@ -106,7 +131,7 @@ export function HomeScreen({
                                 </Button>
 
                                 <Button
-                                    onClick={() => setMode("main")}
+                                    onClick={() => setScreenMode("main")}
                                     disabled={isLoading}
                                     variant="outline"
                                     className="w-full"
