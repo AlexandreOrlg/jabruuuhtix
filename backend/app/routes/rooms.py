@@ -41,8 +41,8 @@ def get_random_secret_word() -> str:
         with open(words_file, "r", encoding="utf-8") as f:
             words = [line.strip().lower() for line in f if line.strip()]
         if words:
-           # return random.choice(words)
-            return "Ambition"
+            return random.choice(words)
+           # return "Ambition"
 
     raise HTTPException(status_code=500, detail="words.txt is missing or empty")
 
