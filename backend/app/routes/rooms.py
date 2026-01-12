@@ -5,11 +5,16 @@ from supabase import create_client
 import random
 import string
 from datetime import datetime
-from pathlib import Path
 import logging
 
 from ..config import get_settings
-from ..embeddings import get_embedding, find_max_similarity, find_min_similarity, compute_top_1000
+from ..embeddings import (
+    get_embedding,
+    find_max_similarity,
+    find_min_similarity,
+    compute_top_1000,
+    get_secret_word_candidates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +38,12 @@ def generate_room_code(length: int = 6) -> str:
 
 
 def get_random_secret_word() -> str:
-    """Get a random word from the word list."""
-    # Try to load from words.txt file
-    words_file = Path(__file__).parent.parent.parent / "words.txt"
-    
-    if words_file.exists():
-        with open(words_file, "r", encoding="utf-8") as f:
-            words = [line.strip().lower() for line in f if line.strip()]
-        if words:
-            return random.choice(words)
-           # return "Ambition"
+    """Pick a secret word from frequent model nouns (length > 5)."""
+    candidates = get_secret_word_candidates()
+    if candidates:
+        return random.choice(candidates)
 
-    raise HTTPException(status_code=500, detail="words.txt is missing or empty")
+    raise HTTPException(status_code=500, detail="No secret word candidates available")
 
 
 @router.post("", response_model=CreateRoomResponse)

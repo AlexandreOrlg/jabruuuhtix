@@ -4,7 +4,13 @@ from supabase import create_client
 from typing import Optional
 
 from ..config import get_settings
-from ..embeddings import get_embedding, compute_normalized_score, is_word_in_vocabulary, get_rank_and_temperature
+from ..embeddings import (
+    get_embedding,
+    compute_normalized_score,
+    is_word_in_vocabulary,
+    get_rank_and_temperature,
+    normalize_guess_word,
+)
 
 router = APIRouter(prefix="/api/guesses", tags=["guesses"])
 
@@ -37,8 +43,8 @@ async def submit_guess(request: SubmitGuessRequest):
         settings.supabase_service_role_key
     )
     
-    # Normalize word
-    word = request.word.lower().strip()
+    # Normalize word (lemmatize conjugated verbs when possible)
+    word = normalize_guess_word(request.word)
     
     # Find room by code
     room_result = supabase.table("rooms").select("*").eq("code", request.roomCode).single().execute()

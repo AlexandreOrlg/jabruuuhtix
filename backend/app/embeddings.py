@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Optional
 import logging
 import requests
+from functools import lru_cache
+import csv
 
 from .config import get_settings
 
@@ -11,6 +13,99 @@ logger = logging.getLogger(__name__)
 
 # Global model instance
 _model: Optional[KeyedVectors] = None
+
+
+@lru_cache(maxsize=1)
+def load_lexicon_data() -> tuple[
+    set[str],
+    set[str],
+    dict[str, str],
+    dict[str, str],
+    set[str],
+]:
+    """Load allowed words, noun lemmas, lemma mappings, and non-verb lemmas."""
+    lexicon_path = Path(__file__).parent.parent / "OpenLexicon.tsv"
+    if not lexicon_path.exists():
+        logger.warning("OpenLexicon.tsv not found; skipping lexicon filtering")
+        return set(), set(), {}, {}, set()
+
+    allowed: set[str] = set()
+    noun_lemmas: set[str] = set()
+    verb_lemma_by_form: dict[str, str] = {}
+    noun_lemma_by_form: dict[str, str] = {}
+    non_verb_lemmas: set[str] = set()
+    with open(lexicon_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f, delimiter="\t")
+        try:
+            header = next(reader)
+        except StopIteration:
+            return allowed, noun_lemmas, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas
+
+        try:
+            ortho_idx = header.index("ortho")
+        except ValueError:
+            logger.warning("OpenLexicon.tsv missing 'ortho' column; skipping filter")
+            return set(), set(), {}, {}, set()
+
+        freq_idx = header.index("Lexique3__freqfilms2") if "Lexique3__freqfilms2" in header else None
+        cgram_idx = header.index("Lexique3__cgram") if "Lexique3__cgram" in header else None
+        cgramortho_idx = header.index("Lexique3__cgramortho") if "Lexique3__cgramortho" in header else None
+        islem_idx = header.index("Lexique3__islem") if "Lexique3__islem" in header else None
+        lemme_idx = header.index("Lexique3__lemme") if "Lexique3__lemme" in header else None
+
+        for row in reader:
+            if len(row) <= ortho_idx:
+                continue
+
+            word = row[ortho_idx].strip().lower()
+            if not word:
+                continue
+
+            freq = 0.0
+            if freq_idx is not None and len(row) > freq_idx:
+                try:
+                    freq = float(row[freq_idx])
+                except ValueError:
+                    freq = 0.0
+            passes_freq = freq >= 0.01 if freq_idx is not None else False
+
+            cgram_value = ""
+            if cgramortho_idx is not None and len(row) > cgramortho_idx:
+                cgram_value = row[cgramortho_idx]
+            elif cgram_idx is not None and len(row) > cgram_idx:
+                cgram_value = row[cgram_idx]
+
+            tags = set()
+            if cgram_value:
+                tags = {tag.strip() for tag in cgram_value.split(",") if tag.strip()}
+
+            is_lemma = False
+            if islem_idx is not None and len(row) > islem_idx:
+                is_lemma = row[islem_idx].strip() == "1"
+
+            lemma = ""
+            if lemme_idx is not None and len(row) > lemme_idx:
+                lemma = row[lemme_idx].strip().lower()
+
+            verb_only = "VER" in tags and tags.issubset({"VER", "AUX"})
+            is_conjugated_verb = verb_only and not is_lemma
+            if passes_freq and not is_conjugated_verb:
+                allowed.add(word)
+
+            if is_lemma and not tags.issubset({"VER", "AUX"}):
+                non_verb_lemmas.add(word)
+
+            if passes_freq and is_lemma and "NOM" in tags:
+                noun_lemmas.add(word)
+
+            if verb_only and not is_lemma and lemma and lemma != word:
+                if word not in verb_lemma_by_form:
+                    verb_lemma_by_form[word] = lemma
+            if "NOM" in tags and not is_lemma and lemma and lemma != word:
+                if word not in noun_lemma_by_form:
+                    noun_lemma_by_form[word] = lemma
+
+    return allowed, noun_lemmas, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas
 
 
 def download_model(url: str, destination: Path) -> None:
@@ -106,31 +201,18 @@ def find_max_similarity(secret_word: str) -> float:
     """
     Find the maximum similarity to the secret word from nearest neighbors.
     
-    Uses gensim's most_similar which only returns words IN the vocabulary.
+    Uses the same top 1000 list as the game to keep values consistent.
     """
-    model = load_model()
     secret_word_lower = secret_word.lower().strip()
     
-    if secret_word_lower not in model.key_to_index:
-        logger.warning(f"Secret word '{secret_word}' not in vocabulary, using default 0.7")
-        return 0.7
-    
     try:
-        # Get 10 most similar words (all guaranteed to be in vocabulary)
-        similar_words = model.most_similar(secret_word_lower, topn=10)
-        
-        for word, similarity in similar_words:
-            # Skip words that contain the secret word or vice versa
-            if secret_word_lower in word.lower() or word.lower() in secret_word_lower:
-                continue
-            
-            logger.info(f"Max similarity for '{secret_word}': {similarity:.4f} (closest: '{word}')")
-            return similarity
-        
-        # Fallback if all similar words were filtered
-        if similar_words:
-            return similar_words[0][1]
-        
+        top_1000 = compute_top_1000(secret_word_lower)
+        if top_1000:
+            closest = top_1000[0]
+            logger.info(
+                f"Max similarity for '{secret_word}': {closest['similarity']:.4f} (closest: '{closest['word']}')"
+            )
+            return float(closest["similarity"])
     except Exception as e:
         logger.warning(f"Error finding max similarity: {e}")
     
@@ -240,22 +322,80 @@ def compute_top_1000(secret_word: str) -> list[dict]:
         return []
     
     try:
-        # Get 1000 most similar words
-        similar_words = model.most_similar(secret_word_lower, topn=1000)
+        allowed_words, _, _, _, _ = load_lexicon_data()
+        filter_enabled = bool(allowed_words)
+        topn = 5000 if filter_enabled else 1000
+
+        # Get most similar words (filter to allowed French words if available)
+        similar_words = model.most_similar(secret_word_lower, topn=topn)
         
         result = []
         for word, similarity in similar_words:
+            if filter_enabled and word.lower() not in allowed_words:
+                continue
             result.append({
                 "word": word,
                 "similarity": float(similarity)
             })
+            if len(result) >= 1000:
+                break
         
-        logger.info(f"Computed top 1000 for '{secret_word}' (closest: '{result[0]['word']}' @ {result[0]['similarity']:.4f})")
+        if result:
+            logger.info(
+                f"Computed top 1000 for '{secret_word}' (closest: '{result[0]['word']}' @ {result[0]['similarity']:.4f})"
+            )
+        elif filter_enabled:
+            logger.info(f"Computed top 1000 for '{secret_word}' (no allowed words found)")
         return result
         
     except Exception as e:
         logger.error(f"Error computing top 1000: {e}")
         return []
+
+
+@lru_cache(maxsize=4)
+def get_secret_word_candidates(limit: int = 3000, min_length: int = 6) -> list[str]:
+    """
+    Build a list of secret word candidates from the top N most frequent model words.
+    Filters to nouns from OpenLexicon and a minimum length.
+    """
+    model = load_model()
+    _, noun_lemmas, _, _, _ = load_lexicon_data()
+    if not noun_lemmas:
+        logger.warning("No noun words loaded from OpenLexicon")
+        return []
+
+    candidates: list[str] = []
+    for word in model.index_to_key[:limit]:
+        word_lower = word.lower().strip()
+        if len(word_lower) < min_length:
+            continue
+        if word_lower not in noun_lemmas:
+            continue
+        candidates.append(word_lower)
+
+    logger.info(f"Secret candidates: {len(candidates)} out of top {limit} words")
+    return candidates
+
+
+def normalize_guess_word(word: str) -> str:
+    """Normalize conjugated verbs to their lemma when possible."""
+    word_lower = word.lower().strip()
+    _, _, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas = load_lexicon_data()
+    if word_lower in non_verb_lemmas:
+        return word_lower
+
+    lemma = verb_lemma_by_form.get(word_lower)
+    if lemma:
+        if is_word_in_vocabulary(lemma):
+            return lemma
+        return word_lower
+
+    noun_lemma = noun_lemma_by_form.get(word_lower)
+    if noun_lemma and is_word_in_vocabulary(noun_lemma):
+        return noun_lemma
+
+    return word_lower
 
 
 def calculate_temperature(rank: int) -> float:
@@ -341,4 +481,3 @@ def get_rank_and_temperature(
             pass
     
     return (None, 0.0)
-
