@@ -5,13 +5,13 @@ services:
     ports:
       - "8081:8081"
     volumes:
-      - fasttext-cache:/app/.cache/fasttext
+      - word2vec-cache:/app/.cache/word2vec
       - ./backend/app:/app/app:ro
       - ./backend/words.txt:/app/words.txt:ro
     env_file:
       - .env
     environment:
-      - FASTTEXT_CACHE_DIR=/app/.cache/fasttext
+      - WORD2VEC_CACHE_DIR=/app/.cache/word2vec
     command: uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
 
   # Frontend in development mode with hot reload
@@ -34,5 +34,5 @@ services:
       - embedding-api
 
 volumes:
-  fasttext-cache:
+  word2vec-cache:
     driver: local

@@ -4,7 +4,7 @@ from supabase import create_client
 from typing import Optional
 
 from ..config import get_settings
-from ..embeddings import get_embedding, compute_normalized_score
+from ..embeddings import get_embedding, compute_normalized_score, is_word_in_vocabulary, get_rank_and_temperature
 
 router = APIRouter(prefix="/api/guesses", tags=["guesses"])
 
@@ -21,6 +21,8 @@ class SubmitGuessResponse(BaseModel):
     roomId: str
     word: str
     score: int
+    rank: Optional[int] = None  # 1-1000 (1000 = closest) or null if not in top 1000
+    temperature: float = 0.0  # Temperature in °C
     createdAt: str
     revealedWord: Optional[str] = None
 
@@ -61,7 +63,9 @@ async def submit_guess(request: SubmitGuessRequest):
     secret = secret_result.data
     secret_word = secret["secret_word"]
     secret_embedding_raw = secret["secret_embedding"]
-    max_similarity = secret.get("max_similarity", 0.7)  # Default fallback
+    max_similarity = secret.get("max_similarity", 0.7)
+    min_similarity = secret.get("min_similarity", 0.1)
+    top_1000 = secret.get("top_1000_words", [])
     
     # Parse pgvector string to list of floats
     # pgvector returns format like "[0.1,0.2,...]" or "(0.1,0.2,...)"
@@ -75,11 +79,32 @@ async def submit_guess(request: SubmitGuessRequest):
     # Check if exact match
     if word == secret_word.lower():
         score = 100
+        rank = 1000  # Exact match = highest rank
+        temperature = 100.0
     else:
+        # Check if word is in vocabulary
+        if not is_word_in_vocabulary(word):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Le mot '{word}' n'existe pas dans le dictionnaire"
+            )
+        
         # Compute embedding and normalized score
         try:
             guess_embedding = get_embedding(word)
-            score = compute_normalized_score(guess_embedding, secret_embedding, max_similarity)
+            score = compute_normalized_score(
+                guess_embedding, 
+                secret_embedding, 
+                max_similarity,
+                min_similarity
+            )
+            # Get rank and temperature from precomputed top 1000
+            rank, temperature = get_rank_and_temperature(word, top_1000, secret_embedding)
+        except KeyError:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Le mot '{word}' n'existe pas dans le dictionnaire"
+            )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to compute score: {str(e)}")
     
@@ -90,7 +115,9 @@ async def submit_guess(request: SubmitGuessRequest):
             "player_id": request.playerId,
             "player_name": request.playerName,
             "word": word,
-            "score": score
+            "score": score,
+            "rank": rank,
+            "temperature": temperature
         }).execute()
         
         if not guess_result.data:
@@ -113,6 +140,8 @@ async def submit_guess(request: SubmitGuessRequest):
             roomId=room_id,
             word=word,
             score=score,
+            rank=rank,
+            temperature=temperature,
             createdAt=guess_data["created_at"],
             revealedWord=revealed_word
         )

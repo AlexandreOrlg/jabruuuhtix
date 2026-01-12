@@ -3,11 +3,11 @@ services:
   embedding-api:
     build: ./backend
     volumes:
-      - fasttext-cache:/app/.cache/fasttext
+      - word2vec-cache:/app/.cache/word2vec
     env_file:
       - .env
     environment:
-      - FASTTEXT_CACHE_DIR=/app/.cache/fasttext
+      - WORD2VEC_CACHE_DIR=/app/.cache/word2vec
     restart: unless-stopped
 
   # Frontend
@@ -23,5 +23,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  fasttext-cache:
+  word2vec-cache:
     driver: local

@@ -14,6 +14,8 @@ export interface Guess {
     player_name: string;
     word: string;
     score: number;
+    rank: number | null;
+    temperature: number;
     created_at: string;
 }
 
@@ -34,6 +36,8 @@ export interface SubmitGuessResponse {
     roomId: string;
     word: string;
     score: number;
+    rank: number | null;
+    temperature: number;
     createdAt: string;
     revealedWord: string | null;
 }

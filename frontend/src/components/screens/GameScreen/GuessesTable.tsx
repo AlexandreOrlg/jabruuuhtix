@@ -35,6 +35,8 @@ export function GuessesTable({
                     <TableHead>Proposition</TableHead>
                     <TableHead>Auteur</TableHead>
                     <TableHead className="text-right">Score</TableHead>
+                    <TableHead className="text-right">Rang</TableHead>
+                    <TableHead className="text-right">Temp.</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -53,6 +55,16 @@ export function GuessesTable({
                             <Badge variant="secondary" className={guess.scoreColor}>
                                 {guess.formattedScore}
                             </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <span className="text-gray-400">
+                                {guess.formattedRank}
+                            </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <span className={guess.temperatureColor}>
+                                {guess.temperatureEmoji} {guess.formattedTemperature}
+                            </span>
                         </TableCell>
                     </TableRow>
                 ))}

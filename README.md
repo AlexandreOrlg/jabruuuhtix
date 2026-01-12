@@ -1,6 +1,6 @@
 # 🎮 Jabruuuhtix
 
-> Jeu de mots temps réel basé sur la similarité sémantique (embeddings fastText).
+> Jeu de mots temps réel basé sur la similarité sémantique (embeddings Word2Vec).
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
@@ -9,14 +9,27 @@
 
 ## 🎯 Concept
 
-Jabruuuhtix est un jeu multijoueur en temps réel où les joueurs doivent deviner un mot secret. Chaque proposition est évaluée par similarité sémantique grâce aux embeddings fastText. Plus votre mot est "proche" du mot secret, plus votre score est élevé !
+Jabruuuhtix est un jeu multijoueur en temps réel inspiré de **Cémantix**. Les joueurs doivent deviner un mot secret en proposant des mots. Chaque proposition est évaluée par similarité sémantique grâce aux embeddings Word2Vec.
 
-- **Score 100** = Vous avez trouvé le mot exact !
-- **Score 80+** = Très proche
-- **Score 50+** = Vous vous rapprochez
-- **Score < 50** = Continuez à chercher
-- **Modes** : COOP (tout le monde voit les propositions) / JCJ (les mots des
-  autres sont masqués tant que vous n'avez pas trouvé le mot)
+### Système de scoring
+
+| Indicateur | Description |
+|------------|-------------|
+| **Score %** | Pourcentage de similarité (0-100%) |
+| **Rang ‰** | Position parmi les 1000 mots les plus proches (999 = le plus proche) |
+| **Température °C** | Indicateur visuel façon Cémantix |
+
+### Échelle de température
+
+| Température | Signification | Emoji |
+|-------------|---------------|-------|
+| 100°C | Mot exact trouvé ! | 🔥 |
+| 50-73°C | Très chaud (top 100) | 🌡️ |
+| 24-50°C | Tiède (dans top 1000) | 🫡 |
+| < 24°C | Froid (hors top 1000) | ❄️ |
+| Négatif | Très froid | 🧊 |
+
+- **Modes** : COOP (tout le monde voit les propositions) / JCJ (les mots des autres sont masqués)
 
 ## 🚀 Installation
 
@@ -44,58 +57,61 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 # Frontend (passées au build Docker)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_API_URL=https://your-api-domain.com  # URL publique de l'API
+VITE_API_URL=https://your-api-domain.com
 ```
 
 ### 2. Base de données
 
 Exécutez les scripts SQL dans votre projet Supabase :
-```bash
-# Via Supabase CLI ou copier/coller dans l'éditeur SQL
-cat supabase/migrations/001_init.sql
-cat supabase/migrations/002_room_mode.sql
+```sql
+-- Activer pgvector
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Tables principales
+CREATE TABLE rooms (...);
+CREATE TABLE room_secrets (
+    ...
+    secret_embedding vector(500),  -- Word2Vec 500 dimensions
+    top_1000_words JSONB,
+    min_similarity FLOAT
+);
+CREATE TABLE guesses (
+    ...
+    rank INTEGER,
+    temperature FLOAT
+);
 ```
 
-### 3. Déploiement Docker
+### 3. Lancement
 
 ```bash
-# Build et lancement complet (frontend + backend)
+# Développement (avec hot-reload)
+docker-compose -f docker-compose.dev.yml up --build
+
+# Production
 docker-compose up -d --build
 
-# L'app sera disponible sur :
-# - Frontend : http://localhost:3000
+# Ports :
+# - Frontend : http://localhost:3001 (dev) / http://localhost:3000 (prod)
 # - API : http://localhost:8081
 ```
 
-### 🐳 Déploiement Dokploy
-
-Pour Dokploy, configurez chaque service séparément :
-
-**Backend (embedding-api)**
-- Build context: `./backend`
-- Port: `8081`
-- Variables d'env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-
-**Frontend**
-- Build context: `./frontend`
-- Port: `80`
-- Build args: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`
-
-> ⚠️ Le premier démarrage du backend télécharge le modèle fastText (~7GB).
+> ⚠️ Le premier démarrage télécharge le modèle Word2Vec (~298 MB).
 
 ## 🎮 Comment jouer
 
 1. **Entrez votre pseudo**
 2. **Créez une salle** ou **rejoignez** avec un code
-3. **Proposez des mots** et observez votre score
-4. Trouvez le mot avec un score de **100** pour gagner !
+3. **Proposez des mots** et observez votre score, rang et température
+4. Trouvez le mot avec un score de **100%** pour gagner !
 
 ## 🛠️ Stack technique
 
 | Couche | Technologies |
 |--------|-------------|
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS, Shadcn UI + 8bitcn |
-| Backend | FastAPI, Python 3.11, fastText |
+| Backend | FastAPI, Python 3.11, gensim (Word2Vec) |
+| Embeddings | frWac Word2Vec (Jean-Philippe Fauconnier) |
 | Base de données | Supabase (PostgreSQL + pgvector) |
 | Temps réel | Supabase Realtime |
 | Infra | Docker, Docker Compose |
@@ -105,15 +121,16 @@ Pour Dokploy, configurez chaque service séparément :
 ```
 jabruuuhtix/
 ├── frontend/           # React + Vite + TypeScript
-├── backend/            # FastAPI + fastText
+├── backend/            # FastAPI + Word2Vec
 │   ├── app/
 │   │   ├── main.py
-│   │   ├── embeddings.py
+│   │   ├── embeddings.py   # Word2Vec + température
 │   │   └── routes/
 │   └── words.txt       # Liste des mots secrets
 ├── supabase/
-│   └── migrations/     # Schéma SQL
+│   └── migrations/
 ├── docker-compose.yml
+├── docker-compose.dev.yml
 └── .env.example
 ```
 
@@ -122,7 +139,7 @@ jabruuuhtix/
 ### `POST /api/rooms`
 Crée une nouvelle salle de jeu.
 ```json
-{ "playerName": "Alex" }
+{ "playerName": "Alex", "mode": "coop" }
 → { "roomId", "roomCode", "createdAt" }
 ```
 
@@ -130,18 +147,13 @@ Crée une nouvelle salle de jeu.
 Soumet une proposition de mot.
 ```json
 { "roomCode": "ABC123", "playerId": "uuid", "playerName": "Alex", "word": "chat" }
-→ { "guessId", "roomId", "word", "score", "createdAt", "revealedWord" }
+→ { "guessId", "word", "score", "rank", "temperature", "createdAt", "revealedWord" }
 ```
 
-## 🔧 Variables d'environnement
+## 🙏 Crédits
 
-| Variable | Description |
-|----------|-------------|
-| `SUPABASE_URL` | URL du projet Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé service role |
-| `VITE_SUPABASE_URL` | URL Supabase (frontend) |
-| `VITE_SUPABASE_ANON_KEY` | Clé anon (frontend) |
-| `VITE_API_URL` | URL de l'API (défaut: `http://localhost:8081`) |
+- Modèle Word2Vec français : [Jean-Philippe Fauconnier](https://fauconnier.github.io/#data)
+- Inspiré de [Cémantix](https://cemantix.certitudes.org)
 
 ## 📝 License
 

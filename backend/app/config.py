@@ -8,10 +8,10 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_role_key: str = ""
 
-    # FastText model
-    fasttext_repo_id: str = "facebook/fasttext-fr-vectors"
-    fasttext_filename: str = "model.bin"
-    fasttext_cache_dir: str = "./.cache/fasttext"
+    # Word2Vec model (French frWac)
+    word2vec_model_url: str = "https://embeddings.net/embeddings/frWac_non_lem_no_postag_no_phrase_500_skip_cut100.bin"
+    word2vec_filename: str = "frWac_non_lem_no_postag_no_phrase_500_skip_cut100.bin"
+    word2vec_cache_dir: str = "./.cache/word2vec"
 
     # CORS
     cors_origins: str = "*"

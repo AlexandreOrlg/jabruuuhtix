@@ -21,14 +21,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan - load models on startup."""
     logger.info("Starting jabruuuhtix API...")
     
-    # Preload the fastText model on startup
+    # Preload the Word2Vec model on startup
     try:
         from .embeddings import load_model
-        logger.info("Preloading fastText model...")
+        logger.info("Preloading Word2Vec model...")
         load_model()
-        logger.info("fastText model loaded successfully!")
+        logger.info("Word2Vec model loaded successfully!")
     except Exception as e:
-        logger.error(f"Failed to load fastText model: {e}")
+        logger.error(f"Failed to load Word2Vec model: {e}")
         # Don't fail startup, model will be loaded on first request
     
     yield

@@ -9,7 +9,7 @@ from pathlib import Path
 import logging
 
 from ..config import get_settings
-from ..embeddings import get_embedding, find_max_similarity
+from ..embeddings import get_embedding, find_max_similarity, find_min_similarity, compute_top_1000
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,8 @@ def get_random_secret_word() -> str:
         with open(words_file, "r", encoding="utf-8") as f:
             words = [line.strip().lower() for line in f if line.strip()]
         if words:
-            return random.choice(words)
+           # return random.choice(words)
+            return "Ambition"
 
     raise HTTPException(status_code=500, detail="words.txt is missing or empty")
 
@@ -67,13 +68,17 @@ async def create_room(request: CreateRoomRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to compute embedding: {str(e)}")
     
-    # Find max similarity for score normalization
+    # Find max and min similarity for score normalization
     try:
         max_similarity = find_max_similarity(secret_word)
-        logger.info(f"Room created with secret '{secret_word}', max_similarity: {max_similarity:.4f}")
+        min_similarity = find_min_similarity(secret_word)
+        top_1000 = compute_top_1000(secret_word)
+        logger.info(f"Room created with secret '{secret_word}', max_similarity: {max_similarity:.4f}, min_similarity: {min_similarity:.4f}, top_1000: {len(top_1000)} words")
     except Exception as e:
-        logger.warning(f"Failed to compute max_similarity, using default: {e}")
-        max_similarity = 0.7  # Fallback default
+        logger.warning(f"Failed to compute similarities, using defaults: {e}")
+        max_similarity = 0.7
+        min_similarity = 0.1
+        top_1000 = []
     
     # Create room in database
     try:
@@ -90,12 +95,14 @@ async def create_room(request: CreateRoomRequest):
         room_data = room_result.data[0]
         room_id = room_data["id"]
         
-        # Insert room secret with max_similarity
+        # Insert room secret with similarities and top 1000
         supabase.table("room_secrets").insert({
             "room_id": room_id,
             "secret_word": secret_word,
             "secret_embedding": secret_embedding,
-            "max_similarity": max_similarity
+            "max_similarity": max_similarity,
+            "min_similarity": min_similarity,
+            "top_1000_words": top_1000
         }).execute()
         
         return CreateRoomResponse(

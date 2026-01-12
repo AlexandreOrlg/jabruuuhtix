@@ -5,6 +5,8 @@ export interface GuessData {
     player_name: string;
     word: string;
     score: number;
+    rank: number | null;
+    temperature: number;
     created_at: string;
 }
 
@@ -15,6 +17,8 @@ export class Guess {
     readonly playerName: string;
     readonly word: string;
     readonly score: number;
+    readonly rank: number | null;
+    readonly temperature: number;
     readonly createdAt: Date;
 
     constructor(data: GuessData) {
@@ -24,6 +28,8 @@ export class Guess {
         this.playerName = data.player_name;
         this.word = data.word;
         this.score = data.score;
+        this.rank = data.rank;
+        this.temperature = data.temperature ?? 0;
         this.createdAt = new Date(data.created_at);
     }
 
@@ -45,6 +51,30 @@ export class Guess {
 
     get formattedScore(): string {
         return `${this.score}%`;
+    }
+
+    get formattedRank(): string {
+        if (this.rank === null) return "-";
+        return `${this.rank}‰`;
+    }
+
+    get formattedTemperature(): string {
+        return `${this.temperature.toFixed(1)}°C`;
+    }
+
+    get temperatureEmoji(): string {
+        if (this.temperature >= 80) return "🔥";
+        if (this.temperature >= 50) return "🌡️";
+        if (this.temperature > 0) return "🫡";
+        return "❄️";
+    }
+
+    get temperatureColor(): string {
+        if (this.temperature >= 80) return "text-red-500";
+        if (this.temperature >= 50) return "text-orange-400";
+        if (this.temperature >= 25) return "text-yellow-400";
+        if (this.temperature > 0) return "text-blue-300";
+        return "text-cyan-400";
     }
 
     static getScoreColor(score: number): string {
