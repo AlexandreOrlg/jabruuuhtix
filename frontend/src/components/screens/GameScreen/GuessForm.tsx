@@ -20,6 +20,7 @@ export function GuessForm({ isLoading, submittedWords, onSubmitGuess }: GuessFor
         const normalizedWord = word.toLowerCase().trim();
 
         if (!normalizedWord) return;
+        if (normalizedWord.length <= 2) return;
         if (submittedWords.has(normalizedWord)) return;
 
         const result = await onSubmitGuess(normalizedWord);
