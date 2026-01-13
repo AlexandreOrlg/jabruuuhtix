@@ -45,12 +45,15 @@ export function GameScreen({
             ? Guess.getBestScore(guesses.filter((guess) => guess.belongsTo(playerId)))
             : bestScore;
 
+    const myGuesses = guesses.filter((guess) => guess.belongsTo(playerId));
+    const isJcjMode = roomMode === "jcj";
+
     return (
         <div className="min-h-screen flex overflow-auto h-full">
             <PlayerSidebar players={players} />
 
             <div className="flex-1 p-4">
-                <div className="max-w-2xl mx-auto">
+                <div className={isJcjMode ? "max-w-7xl mx-auto" : "max-w-2xl mx-auto"}>
                     <GameHeader
                         roomCode={roomCode}
                         roomMode={roomMode}
@@ -77,15 +80,37 @@ export function GameScreen({
                         </div>
                     )}
 
-                    <div className="mt-8 w-full [&>div]:w-full">
-                        <GuessesTable
-                            guesses={guesses}
-                            playerId={playerId}
-                            revealAllWords={revealAllWords}
-                        />
-                    </div>
+                    {isJcjMode ? (
+                        <div className="mt-8 grid grid-cols-2 gap-6">
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4 text-center">Mes propositions</h3>
+                                <GuessesTable
+                                    guesses={myGuesses}
+                                    playerId={playerId}
+                                    revealAllWords={true}
+                                />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4 text-center">Toutes les propositions</h3>
+                                <GuessesTable
+                                    guesses={guesses}
+                                    playerId={playerId}
+                                    revealAllWords={revealAllWords}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mt-8 w-full [&>div]:w-full">
+                            <GuessesTable
+                                guesses={guesses}
+                                playerId={playerId}
+                                revealAllWords={revealAllWords}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 }
+
