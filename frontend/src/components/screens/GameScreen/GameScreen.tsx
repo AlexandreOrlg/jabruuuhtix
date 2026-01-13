@@ -53,7 +53,7 @@ export function GameScreen({
             <PlayerSidebar players={players} />
 
             <div className="flex-1 p-4">
-                <div className={isJcjMode ? "max-w-7xl mx-auto" : "max-w-2xl mx-auto"}>
+                <div className={isJcjMode ? "w-full mx-auto" : "max-w-2xl mx-auto"}>
                     <GameHeader
                         roomCode={roomCode}
                         roomMode={roomMode}
