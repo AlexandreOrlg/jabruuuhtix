@@ -4,9 +4,10 @@ import { Guess } from "@/models/Guess";
 
 interface TemperatureCardProps {
     bestTemperature: number;
+    lastGuess: Guess | null;
 }
 
-export function TemperatureCard({ bestTemperature }: TemperatureCardProps) {
+export function TemperatureCard({ bestTemperature, lastGuess }: TemperatureCardProps) {
     const progressValue = Math.min(100, Math.max(0, bestTemperature));
 
     return (
@@ -20,6 +21,21 @@ export function TemperatureCard({ bestTemperature }: TemperatureCardProps) {
                         {bestTemperature.toFixed(1)}°C
                     </div>
                     <Progress value={progressValue} className="mt-3 h-4" />
+                    <div className="mt-3 text-xs text-gray-400">Dernière soumission</div>
+                    {lastGuess ? (
+                        <div className="flex items-center justify-center gap-2 text-sm">
+                            <span className="font-medium truncate max-w-[140px]">
+                                {lastGuess.word}
+                            </span>
+                            <span className={lastGuess.temperatureColor}>
+                                {lastGuess.temperatureEmoji} {lastGuess.formattedTemperature}
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="text-xs text-gray-500 mt-1">
+                            Aucune proposition pour l'instant
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>

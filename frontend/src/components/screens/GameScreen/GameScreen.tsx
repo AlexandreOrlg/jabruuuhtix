@@ -39,21 +39,30 @@ export function GameScreen({
 }: GameScreenProps) {
     const players = usePlayers(guesses, playerId, presentPlayers);
     const isJcjMode = roomMode === "jcj";
-    const { myGuesses, displayedBestTemperature } = useMemo(() => {
-        if (!isJcjMode) {
-            return {
-                myGuesses: [],
-                displayedBestTemperature: Guess.getBestTemperature(guesses),
-            };
+    const { myGuesses, displayedBestTemperature, lastGuess } = useMemo(() => {
+        const playerGuesses = guesses.filter((guess) => guess.belongsTo(playerId));
+        let latestGuess: Guess | null = null;
+        for (const guess of playerGuesses) {
+            if (!latestGuess || guess.createdAt > latestGuess.createdAt) {
+                latestGuess = guess;
+            }
         }
 
-        const filteredGuesses = guesses.filter((guess) => guess.belongsTo(playerId));
         return {
-            myGuesses: filteredGuesses,
-            displayedBestTemperature: Guess.getBestTemperature(filteredGuesses),
+            myGuesses: isJcjMode ? playerGuesses : [],
+            displayedBestTemperature: isJcjMode
+                ? Guess.getBestTemperature(playerGuesses)
+                : Guess.getBestTemperature(guesses),
+            lastGuess: latestGuess,
         };
     }, [guesses, isJcjMode, playerId]);
     const revealAllWords = roomMode === "coop" || Boolean(revealedWord);
+    const blockedWords = useMemo(() => {
+        if (roomMode === "coop") {
+            return new Set(guesses.map((guess) => guess.word.toLowerCase()));
+        }
+        return submittedWords;
+    }, [guesses, roomMode, submittedWords]);
 
     return (
         <div className="min-h-screen flex overflow-auto h-full">
@@ -67,7 +76,10 @@ export function GameScreen({
                         onLeaveRoom={onLeaveRoom}
                     />
 
-                    <TemperatureCard bestTemperature={displayedBestTemperature} />
+                    <TemperatureCard
+                        bestTemperature={displayedBestTemperature}
+                        lastGuess={lastGuess}
+                    />
 
                     {revealedWord && (
                         <VictoryBanner revealedWord={revealedWord} />
@@ -76,7 +88,7 @@ export function GameScreen({
                     {!revealedWord && (
                         <GuessForm
                             isLoading={isLoading}
-                            submittedWords={submittedWords}
+                            blockedWords={blockedWords}
                             onSubmitGuess={onSubmitGuess}
                         />
                     )}

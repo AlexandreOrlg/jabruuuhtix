@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/8bit/input";
 
 interface GuessFormProps {
     isLoading: boolean;
-    submittedWords: Set<string>;
+    blockedWords: Set<string>;
     onSubmitGuess: (word: string) => Promise<{ score: number } | null>;
 }
 
-export function GuessForm({ isLoading, submittedWords, onSubmitGuess }: GuessFormProps) {
+export function GuessForm({ isLoading, blockedWords, onSubmitGuess }: GuessFormProps) {
     const [word, setWord] = useState("");
     const [history, setHistory] = useState<string[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
@@ -21,7 +21,7 @@ export function GuessForm({ isLoading, submittedWords, onSubmitGuess }: GuessFor
 
         if (!normalizedWord) return;
         if (normalizedWord.length <= 2) return;
-        if (submittedWords.has(normalizedWord)) return;
+        if (blockedWords.has(normalizedWord)) return;
 
         const result = await onSubmitGuess(normalizedWord);
         if (result) {
@@ -47,7 +47,7 @@ export function GuessForm({ isLoading, submittedWords, onSubmitGuess }: GuessFor
     };
 
     const normalizedWord = word.toLowerCase().trim();
-    const isWordSubmitted = normalizedWord.length > 0 && submittedWords.has(normalizedWord);
+    const isWordSubmitted = normalizedWord.length > 0 && blockedWords.has(normalizedWord);
 
     return (
         <>
@@ -74,7 +74,7 @@ export function GuessForm({ isLoading, submittedWords, onSubmitGuess }: GuessFor
             </form>
             {isWordSubmitted && normalizedWord && (
                 <div className="text-xs text-yellow-400 mt-2">
-                    Vous avez déjà proposé ce mot
+                    Ce mot a déjà été proposé
                 </div>
             )}
         </>
