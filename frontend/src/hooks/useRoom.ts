@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createRoom, fetchRoomByCode } from "@/api/rooms";
 import { fetchGuessesByRoomId, submitGuess } from "@/api/guesses";
 import { useGuesses } from "@/hooks/useGuesses";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
-import { Guess } from "@/models/Guess";
+import type { Guess } from "@/models/Guess";
 import type { Room, RoomMode } from "@/models/Room";
 import type { PlayerData } from "@/models/Player";
 import type { SubmitGuessResponse } from "@/lib/types";
@@ -21,7 +21,6 @@ interface UseRoomReturn {
     presentPlayers: PlayerData[];
     isLoading: boolean;
     error: string | null;
-    bestScore: number;
     revealedWord: string | null;
     createRoom: (mode: RoomMode) => Promise<Room | null>;
     joinRoom: (roomCode: string) => Promise<boolean>;
@@ -39,7 +38,6 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     const { guesses, addGuess, replaceGuesses, clearGuesses, submittedWords } =
         useGuesses(playerId);
 
-    const bestScore = useMemo(() => Guess.getBestScore(guesses), [guesses]);
     const revealedWord = room?.revealedWord ?? null;
 
     const handleRoomUpdate = useCallback((updatedRoom: Room) => {
@@ -217,7 +215,6 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         presentPlayers,
         isLoading,
         error,
-        bestScore,
         revealedWord,
         createRoom: createRoomHandler,
         joinRoom: joinRoomHandler,

@@ -4,7 +4,7 @@ import type { PlayerData } from "@/models/Player";
 import type { RoomMode } from "@/models/Room";
 import { usePlayers } from "@/hooks/usePlayers";
 import { GameHeader } from "./GameHeader";
-import { ScoreCard } from "./ScoreCard";
+import { TemperatureCard } from "./TemperatureCard";
 import { VictoryBanner } from "./VictoryBanner";
 import { GuessForm } from "./GuessForm";
 import { GuessesTable } from "./GuessesTable";
@@ -15,7 +15,6 @@ interface GameScreenProps {
     guesses: Guess[];
     presentPlayers: PlayerData[];
     roomMode: RoomMode;
-    bestScore: number;
     revealedWord: string | null;
     playerId: string;
     submittedWords: Set<string>;
@@ -30,7 +29,6 @@ export function GameScreen({
     guesses,
     presentPlayers,
     roomMode,
-    bestScore,
     revealedWord,
     playerId,
     submittedWords,
@@ -41,17 +39,20 @@ export function GameScreen({
 }: GameScreenProps) {
     const players = usePlayers(guesses, playerId, presentPlayers);
     const isJcjMode = roomMode === "jcj";
-    const { myGuesses, displayedBestScore } = useMemo(() => {
+    const { myGuesses, displayedBestTemperature } = useMemo(() => {
         if (!isJcjMode) {
-            return { myGuesses: [], displayedBestScore: bestScore };
+            return {
+                myGuesses: [],
+                displayedBestTemperature: Guess.getBestTemperature(guesses),
+            };
         }
 
         const filteredGuesses = guesses.filter((guess) => guess.belongsTo(playerId));
         return {
             myGuesses: filteredGuesses,
-            displayedBestScore: Guess.getBestScore(filteredGuesses),
+            displayedBestTemperature: Guess.getBestTemperature(filteredGuesses),
         };
-    }, [bestScore, guesses, isJcjMode, playerId]);
+    }, [guesses, isJcjMode, playerId]);
     const revealAllWords = roomMode === "coop" || Boolean(revealedWord);
 
     return (
@@ -66,7 +67,7 @@ export function GameScreen({
                         onLeaveRoom={onLeaveRoom}
                     />
 
-                    <ScoreCard bestScore={displayedBestScore} />
+                    <TemperatureCard bestTemperature={displayedBestTemperature} />
 
                     {revealedWord && (
                         <VictoryBanner revealedWord={revealedWord} />
@@ -87,8 +88,8 @@ export function GameScreen({
                     )}
 
                     {isJcjMode ? (
-                        <div className="mt-8 grid grid-cols-2 gap-6">
-                            <div>
+                        <div className="mt-8 grid grid-cols-2 gap-6 retro">
+                            <div className="w-full overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Mes propositions</h3>
                                 <GuessesTable
                                     guesses={myGuesses}
@@ -96,7 +97,7 @@ export function GameScreen({
                                     revealAllWords={true}
                                 />
                             </div>
-                            <div>
+                            <div className="w-full overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Toutes les propositions</h3>
                                 <GuessesTable
                                     guesses={guesses}

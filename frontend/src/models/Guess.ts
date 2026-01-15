@@ -70,11 +70,7 @@ export class Guess {
     }
 
     get temperatureColor(): string {
-        if (this.temperature >= 80) return "text-red-500";
-        if (this.temperature >= 50) return "text-orange-400";
-        if (this.temperature >= 25) return "text-yellow-400";
-        if (this.temperature > 0) return "text-blue-300";
-        return "text-cyan-400";
+        return Guess.getTemperatureColor(this.temperature);
     }
 
     static getScoreColor(score: number): string {
@@ -82,6 +78,14 @@ export class Guess {
         if (score >= 60) return "text-yellow-400";
         if (score >= 40) return "text-orange-400";
         return "text-red-400";
+    }
+
+    static getTemperatureColor(temperature: number): string {
+        if (temperature >= 80) return "text-red-500";
+        if (temperature >= 50) return "text-orange-400";
+        if (temperature >= 25) return "text-yellow-400";
+        if (temperature > 0) return "text-blue-300";
+        return "text-cyan-400";
     }
 
     static sortByScore(guesses: Guess[]): Guess[] {
@@ -94,6 +98,11 @@ export class Guess {
     static getBestScore(guesses: Guess[]): number {
         if (guesses.length === 0) return 0;
         return Math.max(...guesses.map((guess) => guess.score));
+    }
+
+    static getBestTemperature(guesses: Guess[]): number {
+        if (guesses.length === 0) return 0;
+        return Math.max(...guesses.map((guess) => guess.temperature));
     }
 
     static getPlayerWords(guesses: Guess[], playerId: string): Set<string> {

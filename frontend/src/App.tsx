@@ -66,7 +66,6 @@ function App() {
     presentPlayers,
     isLoading,
     error,
-    bestScore,
     revealedWord,
     createRoom,
     joinRoom,
@@ -141,7 +140,6 @@ function App() {
             guesses={guesses}
             presentPlayers={presentPlayers}
             roomMode={room.mode}
-            bestScore={bestScore}
             revealedWord={revealedWord}
             playerId={playerId}
             submittedWords={submittedWords}

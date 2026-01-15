@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/8bit/badge";
 import {
     Table,
     TableBody,
@@ -34,7 +33,6 @@ export function GuessesTable({
                 <TableRow>
                     <TableHead>Proposition</TableHead>
                     <TableHead>Auteur</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
                     <TableHead className="text-right">Rang</TableHead>
                     <TableHead className="text-right">Temp.</TableHead>
                 </TableRow>
@@ -51,11 +49,6 @@ export function GuessesTable({
                                 : guess.word}
                         </TableCell>
                         <TableCell>{guess.playerName}</TableCell>
-                        <TableCell className="text-right">
-                            <Badge variant="secondary" className={guess.scoreColor}>
-                                {guess.formattedScore}
-                            </Badge>
-                        </TableCell>
                         <TableCell className="text-right">
                             <span className="text-gray-400">
                                 {guess.formattedRank}
