@@ -56,6 +56,11 @@ export function GameScreen({
             lastGuess: latestGuess,
         };
     }, [guesses, isJcjMode, playerId]);
+    const latestGuesses = useMemo(() => {
+        return [...guesses]
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .slice(0, 20);
+    }, [guesses]);
     const revealAllWords = roomMode === "coop" || Boolean(revealedWord);
     const blockedWords = useMemo(() => {
         if (roomMode === "coop") {
@@ -68,8 +73,8 @@ export function GameScreen({
         <div className="min-h-screen flex overflow-auto h-full">
             <PlayerSidebar players={players} />
 
-            <div className="flex-1 p-4">
-                <div className={isJcjMode ? "w-full mx-auto" : "max-w-2xl mx-auto"}>
+            <div className="p-4 w-full">
+                <div className="w-full mx-auto">
                     <GameHeader
                         roomCode={roomCode}
                         roomMode={roomMode}
@@ -79,6 +84,9 @@ export function GameScreen({
                     <TemperatureCard
                         bestTemperature={displayedBestTemperature}
                         lastGuess={lastGuess}
+                        guesses={guesses}
+                        roomMode={roomMode}
+                        playerId={playerId}
                     />
 
                     {revealedWord && (
@@ -100,8 +108,8 @@ export function GameScreen({
                     )}
 
                     {isJcjMode ? (
-                        <div className="mt-8 grid grid-cols-2 gap-6 retro">
-                            <div className="w-full overflow-hidden [&>div]:w-full px-2">
+                        <div className="mt-8 grid grid-cols-2 gap-2 retro">
+                            <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Mes propositions</h3>
                                 <GuessesTable
                                     guesses={myGuesses}
@@ -109,7 +117,7 @@ export function GameScreen({
                                     revealAllWords={true}
                                 />
                             </div>
-                            <div className="w-full overflow-hidden [&>div]:w-full px-2">
+                            <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Toutes les propositions</h3>
                                 <GuessesTable
                                     guesses={guesses}
@@ -119,12 +127,23 @@ export function GameScreen({
                             </div>
                         </div>
                     ) : (
-                        <div className="mt-8 w-full [&>div]:w-full">
-                            <GuessesTable
-                                guesses={guesses}
-                                playerId={playerId}
-                                revealAllWords={revealAllWords}
-                            />
+                        <div className="mt-8 grid grid-cols-2 gap-2 retro">
+                            <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
+                                <h3 className="text-lg font-semibold mb-4 text-center">Toutes les propositions</h3>
+                                <GuessesTable
+                                    guesses={guesses}
+                                    playerId={playerId}
+                                    revealAllWords={revealAllWords}
+                                />
+                            </div>
+                            <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
+                                <h3 className="text-lg font-semibold mb-4 text-center">Dernières propositions</h3>
+                                <GuessesTable
+                                    guesses={latestGuesses}
+                                    playerId={playerId}
+                                    revealAllWords={true}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>

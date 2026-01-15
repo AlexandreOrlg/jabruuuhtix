@@ -37,20 +37,12 @@ export class Guess {
         return new Guess(data);
     }
 
-    get scoreColor(): string {
-        return Guess.getScoreColor(this.score);
-    }
-
     get isWinning(): boolean {
         return this.score === 100;
     }
 
     belongsTo(playerId: string): boolean {
         return this.playerId === playerId;
-    }
-
-    get formattedScore(): string {
-        return `${this.score}%`;
     }
 
     get formattedRank(): string {
@@ -63,9 +55,14 @@ export class Guess {
     }
 
     get temperatureEmoji(): string {
-        if (this.temperature >= 80) return "🔥";
-        if (this.temperature >= 50) return "🌡️";
-        if (this.temperature > 0) return "🫡";
+        if (this.temperature >= 90) return "🔥";
+        if (this.temperature >= 75) return "🥵";
+        if (this.temperature >= 60) return "🌡️";
+        if (this.temperature >= 45) return "🔶";
+        if (this.temperature >= 30) return "🙂";
+        if (this.temperature >= 20) return "🌤️";
+        if (this.temperature >= 10) return "💨";
+        if (this.temperature > 0) return "🧊";
         return "❄️";
     }
 
@@ -81,10 +78,15 @@ export class Guess {
     }
 
     static getTemperatureColor(temperature: number): string {
-        if (temperature >= 80) return "text-red-500";
-        if (temperature >= 50) return "text-orange-400";
-        if (temperature >= 25) return "text-yellow-400";
-        if (temperature > 0) return "text-blue-300";
+        if (temperature >= 90 && temperature < 100) return "temperature-flame";
+        if (temperature >= 90) return "text-red-500";
+        if (temperature >= 75) return "text-red-400";
+        if (temperature >= 60) return "text-orange-400";
+        if (temperature >= 45) return "text-amber-400";
+        if (temperature >= 30) return "text-yellow-400";
+        if (temperature >= 20) return "text-lime-400";
+        if (temperature >= 10) return "text-teal-300";
+        if (temperature > 0) return "text-sky-300";
         return "text-cyan-400";
     }
 

@@ -14,3 +14,75 @@
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.temperature-flame {
+  background: linear-gradient(
+    90deg,
+    #ffe166 0%,
+    #ff9a3c 25%,
+    #ff3d00 50%,
+    #ff9a3c 75%,
+    #ffe166 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 6px rgba(255, 92, 0, 0.45);
+  animation: temperature-flame-shift 1.6s linear infinite;
+}
+
+@keyframes temperature-flame-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.flame-row {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 225, 102, 0.22) 0%,
+    rgba(255, 154, 60, 0.28) 25%,
+    rgba(255, 61, 0, 0.35) 50%,
+    rgba(255, 154, 60, 0.28) 75%,
+    rgba(255, 225, 102, 0.22) 100%
+  );
+  background-size: 200% 100%;
+  animation: flame-row-shift 2.4s linear infinite;
+}
+
+.pixel-flame-cell {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 225, 102, 0.22) 0%,
+    rgba(255, 154, 60, 0.28) 25%,
+    rgba(255, 61, 0, 0.35) 50%,
+    rgba(255, 154, 60, 0.28) 75%,
+    rgba(255, 225, 102, 0.22) 100%
+  );
+  background-size: 200% 100%;
+  animation: flame-row-shift 2.4s linear infinite;
+  text-shadow: 0 0 6px rgba(255, 92, 0, 0.35);
+}
+
+@keyframes flame-row-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}

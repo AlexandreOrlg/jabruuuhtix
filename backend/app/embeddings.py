@@ -402,29 +402,18 @@ def calculate_temperature(rank: int) -> float:
     """
     Calculate temperature in °C based on rank (1-999).
     
-    Cémantix data points:
-    - Rank 999 → 72.76°C
-    - Rank 996 → 56.25°C (approx)
-    - Rank 990 → ~50°C
-    - Rank 900 → ~38°C
-    - Rank 48 → ~24.67°C
-    - Rank 1 → ~24°C
-    
     Note: Rank 1000 is reserved for the exact word match (100°C).
     """
-    import math
-    
     if rank <= 0 or rank > 999:
         return 0.0
     
-    # Fitted logarithmic formula based on Cémantix data
-    # Using points: (999, 72.76), (48, 24.67), (1, ~24)
-    # temp = a * ln(rank) + b
-    # Solving: a ≈ 7.0, b ≈ 24.0
-    temperature = 7.0 * math.log(rank) + 24.0
-    
-    # Clamp to valid range for ranked words (24-73°C)
-    return round(max(24.0, min(73.0, temperature)), 2)
+    min_temp = 24.0
+    max_temp = 99.0
+    normalized_rank = rank / 999
+    curved_rank = normalized_rank ** 0.5
+    temperature = min_temp + (max_temp - min_temp) * curved_rank
+
+    return round(temperature, 2)
 
 
 def calculate_cold_temperature(similarity: float, min_sim: float = 0.0, max_sim: float = 0.3) -> float:
@@ -432,13 +421,13 @@ def calculate_cold_temperature(similarity: float, min_sim: float = 0.0, max_sim:
     Calculate temperature for words NOT in the top 1000.
     
     Based on raw similarity, can be negative (cold).
-    - similarity ~ max_sim → ~20°C
+    - similarity ~ max_sim → ~24°C
     - similarity ~ 0 → ~0°C
     - similarity < 0 → negative temperatures
     """
     # Linear scaling: maps similarity to roughly -100 to +24 range
-    # Similarity of 0.3 → ~20°C, 0.0 → 0°C, negative → negative
-    temperature = similarity * 80 - 10
+    # Similarity of 0.3 → 24°C, 0.0 → 0°C, negative → negative
+    temperature = similarity * (24 / max_sim)
     
     return round(max(-100.0, min(24.0, temperature)), 2)
 
