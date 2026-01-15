@@ -7,7 +7,6 @@ services:
     volumes:
       - word2vec-cache:/app/.cache/word2vec
       - ./backend/app:/app/app:ro
-      - ./backend/words.txt:/app/words.txt:ro
     env_file:
       - .env
     environment:

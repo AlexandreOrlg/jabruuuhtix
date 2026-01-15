@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Card,
     CardHeader,
@@ -17,6 +17,7 @@ interface HomeScreenProps {
     onJoinRoom: (code: string) => Promise<void>;
     isLoading: boolean;
     error: string | null;
+    initialRoomCode?: string | null;
 }
 
 export function HomeScreen({
@@ -26,10 +27,17 @@ export function HomeScreen({
     onJoinRoom,
     isLoading,
     error,
+    initialRoomCode,
 }: HomeScreenProps) {
     const [roomCode, setRoomCode] = useState("");
     const [screenMode, setScreenMode] = useState<"main" | "join">("main");
     const [roomMode, setRoomMode] = useState<RoomMode>("coop");
+
+    useEffect(() => {
+        if (!initialRoomCode) return;
+        setRoomCode((prev) => (prev ? prev : initialRoomCode.toUpperCase()));
+        setScreenMode("join");
+    }, [initialRoomCode]);
 
     const handleCreateRoom = async () => {
         if (!playerName.trim()) return;

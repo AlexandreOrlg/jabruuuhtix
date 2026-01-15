@@ -1,18 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function useUrlSync(roomCode: string | null): string | null {
-    const [initialRoomCode, setInitialRoomCode] = useState<string | null>(null);
-
-    useEffect(() => {
+    const [initialRoomCode] = useState<string | null>(() => {
         const url = new URL(window.location.href);
-        setInitialRoomCode(url.searchParams.get("room"));
-    }, []);
+        return url.searchParams.get("room");
+    });
+    const hasSyncedRoomRef = useRef(false);
 
     useEffect(() => {
         const url = new URL(window.location.href);
         if (roomCode) {
+            hasSyncedRoomRef.current = true;
             url.searchParams.set("room", roomCode);
         } else {
+            if (!hasSyncedRoomRef.current) return;
             url.searchParams.delete("room");
         }
         window.history.replaceState({}, "", url.toString());

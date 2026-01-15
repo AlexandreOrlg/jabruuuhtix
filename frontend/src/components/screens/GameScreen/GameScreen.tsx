@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Guess } from "@/models/Guess";
 import type { PlayerData } from "@/models/Player";
 import type { RoomMode } from "@/models/Room";
@@ -39,14 +40,19 @@ export function GameScreen({
     error,
 }: GameScreenProps) {
     const players = usePlayers(guesses, playerId, presentPlayers);
-    const revealAllWords = roomMode === "coop" || Boolean(revealedWord);
-    const displayedBestScore =
-        roomMode === "jcj"
-            ? Guess.getBestScore(guesses.filter((guess) => guess.belongsTo(playerId)))
-            : bestScore;
-
-    const myGuesses = guesses.filter((guess) => guess.belongsTo(playerId));
     const isJcjMode = roomMode === "jcj";
+    const { myGuesses, displayedBestScore } = useMemo(() => {
+        if (!isJcjMode) {
+            return { myGuesses: [], displayedBestScore: bestScore };
+        }
+
+        const filteredGuesses = guesses.filter((guess) => guess.belongsTo(playerId));
+        return {
+            myGuesses: filteredGuesses,
+            displayedBestScore: Guess.getBestScore(filteredGuesses),
+        };
+    }, [bestScore, guesses, isJcjMode, playerId]);
+    const revealAllWords = roomMode === "coop" || Boolean(revealedWord);
 
     return (
         <div className="min-h-screen flex overflow-auto h-full">
@@ -113,4 +119,3 @@ export function GameScreen({
         </div>
     );
 }
-

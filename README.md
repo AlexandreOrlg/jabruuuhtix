@@ -126,7 +126,7 @@ jabruuuhtix/
 │   │   ├── main.py
 │   │   ├── embeddings.py   # Word2Vec + température
 │   │   └── routes/
-│   └── words.txt       # Liste des mots secrets
+│   └── OpenLexicon.tsv # Lexique utilisé pour filtrer les mots
 ├── supabase/
 │   └── migrations/
 ├── docker-compose.yml
