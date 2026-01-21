@@ -1,11 +1,15 @@
-import numpy as np
-from gensim.models import KeyedVectors
+import csv
+import hashlib
+import json
+import logging
+import random
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
-import logging
+
+import numpy as np
 import requests
-from functools import lru_cache
-import csv
+from gensim.models import KeyedVectors
 
 from .config import get_settings
 
@@ -106,6 +110,14 @@ def load_lexicon_data() -> tuple[
                     noun_lemma_by_form[word] = lemma
 
     return allowed, noun_lemmas, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas
+
+
+def is_allowed_guess(word: str) -> bool:
+    """Apply the same lexicon filter used for the top-1000 list."""
+    allowed_words, _, _, _, _ = load_lexicon_data()
+    if not allowed_words:
+        return True
+    return word.lower().strip() in allowed_words
 
 
 def download_model(url: str, destination: Path) -> None:
@@ -219,36 +231,49 @@ def find_max_similarity(secret_word: str) -> float:
     return 0.7
 
 
-def find_min_similarity(secret_word: str, sample_size: int = 100) -> float:
+def find_min_similarity(secret_word: str, sample_size: int = 1200) -> float:
     """
     Estimate the minimum similarity by sampling random words.
-    
+
     Returns the 5th percentile of similarities to establish a baseline.
+    Sampling is seeded by the secret word to make results stable.
     """
-    import random
-    
     model = load_model()
     secret_word_lower = secret_word.lower().strip()
-    
+
     if secret_word_lower not in model.key_to_index:
         return 0.1
-    
+
     secret_embedding = model[secret_word_lower]
-    
-    # Sample random words from vocabulary
-    vocab = list(model.key_to_index.keys())
-    sample = random.sample(vocab, min(sample_size, len(vocab)))
-    
+
+    allowed_words, _, _, _, _ = load_lexicon_data()
+    if allowed_words:
+        eligible_words = [word for word in allowed_words if word in model.key_to_index]
+    else:
+        eligible_words = list(model.key_to_index.keys())
+
+    if not eligible_words:
+        return 0.1
+
+    seed = int.from_bytes(
+        hashlib.sha256(secret_word_lower.encode("utf-8")).digest()[:4],
+        "big",
+    )
+    rng = random.Random(seed)
+    sample = rng.sample(eligible_words, min(sample_size, len(eligible_words)))
+
     similarities = []
     for word in sample:
         word_embedding = model[word]
         sim = cosine_similarity(secret_embedding, word_embedding)
         similarities.append(sim)
-    
+
     # Use 5th percentile as the "floor"
     min_sim = float(np.percentile(similarities, 5))
-    logger.info(f"Min similarity for '{secret_word}': {min_sim:.4f} (5th percentile of {sample_size} samples)")
-    
+    logger.info(
+        f"Min similarity for '{secret_word}': {min_sim:.4f} (5th percentile of {len(sample)} samples)"
+    )
+
     return min_sim
 
 
@@ -259,52 +284,46 @@ def compute_raw_similarity(embedding1: list[float], embedding2: list[float]) -> 
     return cosine_similarity(vec1, vec2)
 
 
-def compute_normalized_score(
-    guess_embedding: list[float], 
-    secret_embedding: list[float], 
-    max_similarity: float,
-    min_similarity: float = 0.1
+def apply_top_100_boost(
+    base_score: int,
+    rank: Optional[int],
+    max_boost: int = 12,
+    curve: float = 0.7,
 ) -> int:
+    """Boost score progressively for the top-100 closest words (rank 900-999)."""
+    if rank is None or rank < 900:
+        return base_score
+
+    progress = (rank - 900) / 99
+    boost = round(max_boost * (progress ** curve))
+    return min(99, base_score + boost)
+
+
+def compute_score_and_temperature(
+    guess_embedding: list[float],
+    secret_embedding: list[float],
+    max_similarity: float,
+    min_similarity: float = 0.1,
+    rank: Optional[int] = None,
+) -> tuple[int, float]:
     """
-    Compute normalized score between 0-100.
-    
-    Uses min-max normalization for better distribution:
-    - Scores below min_similarity → 0
-    - Scores at max_similarity → 99
-    - Exact match → 100
+    Compute score and temperature from a single normalized similarity curve.
+
+    - Scores are 0-99 for non-exact matches (100 reserved for exact).
+    - Temperature is aligned with the score.
+    - Top-100 words get a progressive boost.
     """
     raw_sim = compute_raw_similarity(guess_embedding, secret_embedding)
-    
-    # If exact or very close match
-    if raw_sim >= 0.999:
-        return 100
-    
-    # Clamp to min-max range
-    if raw_sim <= min_similarity:
-        return 0
-    
-    if raw_sim >= max_similarity:
-        return 99
-    
-    # Normalize using min-max scaling
-    # Scale from [min_similarity, max_similarity] to [0, 99]
-    normalized = ((raw_sim - min_similarity) / (max_similarity - min_similarity)) * 99
-    
-    score = round(max(0, min(99, normalized)))
-    
-    return score
 
+    if max_similarity <= min_similarity:
+        return 0, 0.0
 
-def compute_score(embedding1: list[float], embedding2: list[float]) -> int:
-    """
-    Compute similarity score between two embeddings (legacy function).
-    
-    Formula: score = round(cosine_similarity * 100)
-    Returns: integer score between 0 and 100
-    """
-    raw_sim = compute_raw_similarity(embedding1, embedding2)
-    score = round(max(0, raw_sim) * 100)
-    return min(100, max(0, score))
+    normalized = (raw_sim - min_similarity) / (max_similarity - min_similarity)
+    normalized = max(0.0, min(1.0, normalized))
+    base_score = round(normalized * 99)
+    boosted_score = apply_top_100_boost(base_score, rank)
+
+    return boosted_score, float(boosted_score)
 
 
 def compute_top_1000(secret_word: str) -> list[dict]:
@@ -378,6 +397,40 @@ def get_secret_word_candidates(limit: int = 3000, min_length: int = 6) -> list[s
     return candidates
 
 
+WORD_POOLS_PATH = Path(__file__).parent.parent / "data" / "word_pools.json"
+
+
+@lru_cache(maxsize=1)
+def load_word_pools() -> Optional[dict[str, list[str]]]:
+    """Load precomputed word pools (easy/medium/hard) if available."""
+    if not WORD_POOLS_PATH.exists():
+        logger.warning("Word pools not found; falling back to random candidates")
+        return None
+
+    try:
+        with open(WORD_POOLS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as exc:
+        logger.warning(f"Failed to load word pools: {exc}")
+        return None
+
+    model = load_model()
+    pools: dict[str, list[str]] = {}
+    for key in ("easy", "medium", "hard"):
+        words = data.get(key, [])
+        if not isinstance(words, list):
+            continue
+        filtered = [word for word in words if word in model.key_to_index]
+        if filtered:
+            pools[key] = filtered
+
+    if not pools:
+        logger.warning("Word pools are empty after filtering")
+        return None
+
+    return pools
+
+
 def normalize_guess_word(word: str) -> str:
     """Normalize conjugated verbs to their lemma when possible."""
     word_lower = word.lower().strip()
@@ -398,75 +451,17 @@ def normalize_guess_word(word: str) -> str:
     return word_lower
 
 
-def calculate_temperature(rank: int) -> float:
+def get_rank(word: str, top_1000: list[dict]) -> Optional[int]:
     """
-    Calculate temperature in °C based on rank (1-999).
-    
-    Note: Rank 1000 is reserved for the exact word match (100°C).
-    """
-    if rank <= 0 or rank > 999:
-        return 0.0
-    
-    min_temp = 24.0
-    max_temp = 99.0
-    normalized_rank = rank / 999
-    curved_rank = normalized_rank ** 0.5
-    temperature = min_temp + (max_temp - min_temp) * curved_rank
+    Get the rank for a word from precomputed top 1000 list.
 
-    return round(temperature, 2)
-
-
-def calculate_cold_temperature(similarity: float, min_sim: float = 0.0, max_sim: float = 0.3) -> float:
-    """
-    Calculate temperature for words NOT in the top 1000.
-    
-    Based on raw similarity, can be negative (cold).
-    - similarity ~ max_sim → ~24°C
-    - similarity ~ 0 → ~0°C
-    - similarity < 0 → negative temperatures
-    """
-    # Linear scaling: maps similarity to roughly -100 to +24 range
-    # Similarity of 0.3 → 24°C, 0.0 → 0°C, negative → negative
-    temperature = similarity * (24 / max_sim)
-    
-    return round(max(-100.0, min(24.0, temperature)), 2)
-
-
-def get_rank_and_temperature(
-    word: str, 
-    top_1000: list[dict],
-    secret_embedding: list[float] = None
-) -> tuple[Optional[int], float]:
-    """
-    Get the rank and temperature for a word from precomputed top 1000 list.
-    
     Returns:
-        (rank, temperature) where:
-        - rank is 1-999 (999=closest neighbor) or None if not in top 1000
-        - temperature is in °C (can be negative for cold words)
-    
-    Note: Rank 1000 (100°C) is reserved for exact matches, handled separately.
+        rank is 1-999 (999=closest neighbor) or None if not in top 1000
     """
     word_lower = word.lower().strip()
-    
     for i, entry in enumerate(top_1000):
         if entry["word"].lower() == word_lower:
-            # Rank: index 0 = closest neighbor = rank 999
-            # (rank 1000 is reserved for exact match)
             rank = 999 - i
-            if rank < 1:
-                rank = 1
-            temperature = calculate_temperature(rank)
-            return (rank, temperature)
-    
-    # Not in top 1000 - calculate cold temperature based on similarity
-    if secret_embedding is not None:
-        try:
-            word_embedding = get_embedding(word)
-            raw_sim = compute_raw_similarity(word_embedding, secret_embedding)
-            temperature = calculate_cold_temperature(raw_sim)
-            return (None, temperature)
-        except:
-            pass
-    
-    return (None, 0.0)
+            return max(1, rank)
+
+    return None

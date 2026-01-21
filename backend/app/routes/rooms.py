@@ -1,11 +1,11 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import Literal
-from supabase import create_client
+import logging
 import random
 import string
-from datetime import datetime
-import logging
+from typing import Literal
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+from supabase import create_client
 
 from ..config import get_settings
 from ..embeddings import (
@@ -14,6 +14,7 @@ from ..embeddings import (
     find_min_similarity,
     compute_top_1000,
     get_secret_word_candidates,
+    load_word_pools,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,11 +38,29 @@ def generate_room_code(length: int = 6) -> str:
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
-def get_random_secret_word() -> str:
-    """Pick a secret word from frequent model nouns (length > 5)."""
+def choose_difficulty(weights: dict[str, float]) -> str:
+    roll = random.random()
+    cumulative = 0.0
+    for difficulty, weight in weights.items():
+        cumulative += weight
+        if roll <= cumulative:
+            return difficulty
+    return "medium"
+
+
+def get_random_secret_word() -> tuple[str, str]:
+    """Pick a secret word from precomputed pools (auto difficulty)."""
+    pools = load_word_pools()
+    if pools:
+        weights = {"easy": 0.5, "medium": 0.35, "hard": 0.15}
+        difficulty = choose_difficulty(weights)
+        candidates = pools.get(difficulty, [])
+        if candidates:
+            return random.choice(candidates), difficulty
+
     candidates = get_secret_word_candidates()
     if candidates:
-        return random.choice(candidates)
+        return random.choice(candidates), "auto"
 
     raise HTTPException(status_code=500, detail="No secret word candidates available")
 
@@ -58,7 +77,7 @@ async def create_room(request: CreateRoomRequest):
     
     # Generate room code and secret word
     room_code = generate_room_code()
-    secret_word = get_random_secret_word()
+    secret_word, difficulty = get_random_secret_word()
     mode = request.mode
     
     # Compute embedding for secret word
@@ -72,7 +91,11 @@ async def create_room(request: CreateRoomRequest):
         max_similarity = find_max_similarity(secret_word)
         min_similarity = find_min_similarity(secret_word)
         top_1000 = compute_top_1000(secret_word)
-        logger.info(f"Room created with secret '{secret_word}', max_similarity: {max_similarity:.4f}, min_similarity: {min_similarity:.4f}, top_1000: {len(top_1000)} words")
+        logger.info(
+            f"Room created with secret '{secret_word}', difficulty: {difficulty}, "
+            f"max_similarity: {max_similarity:.4f}, min_similarity: {min_similarity:.4f}, "
+            f"top_1000: {len(top_1000)} words"
+        )
     except Exception as e:
         logger.warning(f"Failed to compute similarities, using defaults: {e}")
         max_similarity = 0.7
@@ -86,6 +109,7 @@ async def create_room(request: CreateRoomRequest):
             "code": room_code,
             "status": "active",
             "mode": mode,
+            "difficulty": difficulty,
         }).execute()
         
         if not room_result.data:

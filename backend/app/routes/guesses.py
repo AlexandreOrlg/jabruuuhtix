@@ -1,14 +1,16 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from supabase import create_client
-from typing import Optional
 
 from ..config import get_settings
 from ..embeddings import (
     get_embedding,
-    compute_normalized_score,
     is_word_in_vocabulary,
-    get_rank_and_temperature,
+    compute_score_and_temperature,
+    get_rank,
+    is_allowed_guess,
     normalize_guess_word,
 )
 
@@ -45,6 +47,12 @@ async def submit_guess(request: SubmitGuessRequest):
     
     # Normalize word (lemmatize conjugated verbs when possible)
     word = normalize_guess_word(request.word)
+
+    if not is_allowed_guess(word):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Le mot '{word}' n'est pas autorisé",
+        )
     
     # Find room by code
     room_result = supabase.table("rooms").select("*").eq("code", request.roomCode).single().execute()
@@ -98,14 +106,14 @@ async def submit_guess(request: SubmitGuessRequest):
         # Compute embedding and normalized score
         try:
             guess_embedding = get_embedding(word)
-            score = compute_normalized_score(
-                guess_embedding, 
-                secret_embedding, 
+            rank = get_rank(word, top_1000)
+            score, temperature = compute_score_and_temperature(
+                guess_embedding,
+                secret_embedding,
                 max_similarity,
-                min_similarity
+                min_similarity,
+                rank,
             )
-            # Get rank and temperature from precomputed top 1000
-            rank, temperature = get_rank_and_temperature(word, top_1000, secret_embedding)
         except KeyError:
             raise HTTPException(
                 status_code=400, 
