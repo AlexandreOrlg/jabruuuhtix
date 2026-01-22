@@ -114,20 +114,63 @@ def load_lexicon_data() -> tuple[
 
 
 def strip_accents(word: str) -> str:
+    """Remove accents from a word (NFD normalization)."""
     return "".join(
         char for char in unicodedata.normalize("NFD", word) if unicodedata.category(char) != "Mn"
     )
 
 
+def normalize_word(word: str) -> str:
+    """Basic word normalization: lowercase and strip whitespace."""
+    return word.lower().strip()
+
+
+class Lexicon:
+    """Singleton for centralized lexicon data access."""
+
+    _instance: Optional["Lexicon"] = None
+
+    def __init__(self):
+        data = load_lexicon_data()
+        self.allowed = data[0]
+        self.noun_lemmas = data[1]
+        self.verb_lemma_by_form = data[2]
+        self.noun_lemma_by_form = data[3]
+        self.non_verb_lemmas = data[4]
+
+        normalized = load_lexicon_normalized_data()
+        self.allowed_by_plain = normalized[0]
+        self.non_verb_lemmas_by_plain = normalized[1]
+        self.verb_lemma_by_form_plain = normalized[2]
+        self.noun_lemma_by_form_plain = normalized[3]
+
+    @classmethod
+    def get(cls) -> "Lexicon":
+        """Get the singleton instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset singleton (useful for testing)."""
+        cls._instance = None
+
+
 def is_lemma_form(word: str) -> bool:
-    word_lower = word.lower().strip()
-    _, _, verb_lemma_by_form, noun_lemma_by_form, _ = load_lexicon_data()
-    if word_lower in verb_lemma_by_form or word_lower in noun_lemma_by_form:
+    """Check if a word is already in lemma form (not a conjugated/inflected form)."""
+    word_lower = normalize_word(word)
+    lex = Lexicon.get()
+    
+    # Check if it's a known conjugated form
+    if word_lower in lex.verb_lemma_by_form or word_lower in lex.noun_lemma_by_form:
         return False
-    _, _, verb_lemma_by_form_plain, noun_lemma_by_form_plain = load_lexicon_normalized_data()
+    
+    # Also check without accents
     word_plain = strip_accents(word_lower)
-    if word_plain in verb_lemma_by_form_plain or word_plain in noun_lemma_by_form_plain:
+    if word_plain in lex.verb_lemma_by_form_plain or word_plain in lex.noun_lemma_by_form_plain:
         return False
+    
     return True
 
 
@@ -170,15 +213,16 @@ def load_lexicon_normalized_data() -> tuple[
 
 
 def is_allowed_guess(word: str) -> bool:
-    """Apply the same lexicon filter used for the top-1000 list."""
-    allowed_words, _, _, _, _ = load_lexicon_data()
-    if not allowed_words:
+    """Check if a word is allowed as a guess (exists in the lexicon)."""
+    lex = Lexicon.get()
+    if not lex.allowed:
         return True
-    word_lower = word.lower().strip()
-    if word_lower in allowed_words:
+    
+    word_lower = normalize_word(word)
+    if word_lower in lex.allowed:
         return True
-    allowed_by_plain, _, _, _ = load_lexicon_normalized_data()
-    return strip_accents(word_lower) in allowed_by_plain
+    
+    return strip_accents(word_lower) in lex.allowed_by_plain
 
 
 def download_model(url: str, destination: Path) -> None:
@@ -238,7 +282,7 @@ def load_model() -> KeyedVectors:
 def is_word_in_vocabulary(word: str) -> bool:
     """Check if a word exists in the Word2Vec vocabulary."""
     model = load_model()
-    return word.lower().strip() in model.key_to_index
+    return normalize_word(word) in model.key_to_index
 
 
 def get_embedding(word: str) -> list[float]:
@@ -249,12 +293,12 @@ def get_embedding(word: str) -> list[float]:
         KeyError: If the word is not in the vocabulary
     """
     model = load_model()
-    word = word.lower().strip()
+    word_normalized = normalize_word(word)
     
-    if word not in model.key_to_index:
-        raise KeyError(f"Word '{word}' not in vocabulary")
+    if word_normalized not in model.key_to_index:
+        raise KeyError(f"Word '{word_normalized}' not in vocabulary")
     
-    embedding = model[word]
+    embedding = model[word_normalized]
     return embedding.tolist()
 
 
@@ -270,28 +314,6 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
     return float(dot_product / (norm1 * norm2))
 
 
-def find_max_similarity(secret_word: str) -> float:
-    """
-    Find the maximum similarity to the secret word from nearest neighbors.
-    
-    Uses the same top 1000 list as the game to keep values consistent.
-    """
-    secret_word_lower = secret_word.lower().strip()
-    
-    try:
-        top_1000 = compute_top_1000(secret_word_lower)
-        if top_1000:
-            closest = top_1000[0]
-            logger.info(
-                f"Max similarity for '{secret_word}': {closest['similarity']:.4f} (closest: '{closest['word']}')"
-            )
-            return float(closest["similarity"])
-    except Exception as e:
-        logger.warning(f"Error finding max similarity: {e}")
-    
-    return 0.7
-
-
 def find_min_similarity(secret_word: str, sample_size: int = 1200) -> float:
     """
     Estimate the minimum similarity by sampling random words.
@@ -300,16 +322,16 @@ def find_min_similarity(secret_word: str, sample_size: int = 1200) -> float:
     Sampling is seeded by the secret word to make results stable.
     """
     model = load_model()
-    secret_word_lower = secret_word.lower().strip()
+    secret_word_lower = normalize_word(secret_word)
 
     if secret_word_lower not in model.key_to_index:
         return 0.1
 
     secret_embedding = model[secret_word_lower]
 
-    allowed_words, _, _, _, _ = load_lexicon_data()
-    if allowed_words:
-        eligible_words = [word for word in allowed_words if word in model.key_to_index]
+    lex = Lexicon.get()
+    if lex.allowed:
+        eligible_words = [word for word in lex.allowed if word in model.key_to_index]
     else:
         eligible_words = list(model.key_to_index.keys())
 
@@ -395,15 +417,15 @@ def compute_top_1000(secret_word: str) -> list[dict]:
     ordered by similarity (highest first).
     """
     model = load_model()
-    secret_word_lower = secret_word.lower().strip()
+    secret_word_lower = normalize_word(secret_word)
     
     if secret_word_lower not in model.key_to_index:
         logger.warning(f"Secret word '{secret_word}' not in vocabulary")
         return []
     
     try:
-        allowed_words, _, _, _, _ = load_lexicon_data()
-        filter_enabled = bool(allowed_words)
+        lex = Lexicon.get()
+        filter_enabled = bool(lex.allowed)
         topn = 5000 if filter_enabled else 1000
 
         # Get most similar words (filter to allowed French words if available)
@@ -411,7 +433,7 @@ def compute_top_1000(secret_word: str) -> list[dict]:
         
         result = []
         for word, similarity in similar_words:
-            if filter_enabled and word.lower() not in allowed_words:
+            if filter_enabled and normalize_word(word) not in lex.allowed:
                 continue
             result.append({
                 "word": word,
@@ -433,39 +455,14 @@ def compute_top_1000(secret_word: str) -> list[dict]:
         return []
 
 
-@lru_cache(maxsize=4)
-def get_secret_word_candidates(limit: int = 3000, min_length: int = 6) -> list[str]:
-    """
-    Build a list of secret word candidates from the top N most frequent model words.
-    Filters to nouns from OpenLexicon and a minimum length.
-    """
-    model = load_model()
-    _, noun_lemmas, _, _, _ = load_lexicon_data()
-    if not noun_lemmas:
-        logger.warning("No noun words loaded from OpenLexicon")
-        return []
-
-    candidates: list[str] = []
-    for word in model.index_to_key[:limit]:
-        word_lower = word.lower().strip()
-        if len(word_lower) < min_length:
-            continue
-        if word_lower not in noun_lemmas:
-            continue
-        candidates.append(word_lower)
-
-    logger.info(f"Secret candidates: {len(candidates)} out of top {limit} words")
-    return candidates
-
-
 WORD_POOLS_PATH = Path(__file__).parent.parent / "data" / "word_pools.json"
 
 
 @lru_cache(maxsize=1)
 def load_word_pools() -> Optional[dict[str, list[str]]]:
-    """Load precomputed word pools (easy/medium/hard) if available."""
+    """Load precomputed word pools (easy/medium/hard)."""
     if not WORD_POOLS_PATH.exists():
-        logger.warning("Word pools not found; falling back to random candidates")
+        logger.error("Word pools not found at %s", WORD_POOLS_PATH)
         return None
 
     try:
@@ -497,7 +494,7 @@ def load_word_pools() -> Optional[dict[str, list[str]]]:
             pools[key] = cleaned
 
     if not pools:
-        logger.warning("Word pools are empty after filtering")
+        logger.error("Word pools are empty after filtering")
         return None
 
     return pools
@@ -505,26 +502,20 @@ def load_word_pools() -> Optional[dict[str, list[str]]]:
 
 def normalize_guess_word(word: str, require_vocab: bool = True) -> str:
     """Normalize conjugated verbs or plural nouns to their lemma when possible."""
-    word_lower = word.lower().strip()
-    _, _, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas = load_lexicon_data()
-    (
-        _,
-        non_verb_lemmas_by_plain,
-        verb_lemma_by_form_plain,
-        noun_lemma_by_form_plain,
-    ) = load_lexicon_normalized_data()
+    word_lower = normalize_word(word)
+    lex = Lexicon.get()
     word_plain = strip_accents(word_lower)
 
-    if word_lower in non_verb_lemmas:
+    # Already a non-verb lemma → return as-is
+    if word_lower in lex.non_verb_lemmas:
         return word_lower
-    if word_plain in non_verb_lemmas_by_plain:
-        lemma = non_verb_lemmas_by_plain[word_plain]
+    if word_plain in lex.non_verb_lemmas_by_plain:
+        lemma = lex.non_verb_lemmas_by_plain[word_plain]
         if not require_vocab or is_word_in_vocabulary(lemma):
             return lemma
 
-    lemma = verb_lemma_by_form.get(word_lower)
-    if not lemma:
-        lemma = verb_lemma_by_form_plain.get(word_plain)
+    # Try verb lemma lookup
+    lemma = lex.verb_lemma_by_form.get(word_lower) or lex.verb_lemma_by_form_plain.get(word_plain)
     if lemma:
         if not require_vocab:
             return lemma
@@ -535,9 +526,8 @@ def normalize_guess_word(word: str, require_vocab: bool = True) -> str:
             return lemma_plain
         return word_lower
 
-    noun_lemma = noun_lemma_by_form.get(word_lower)
-    if not noun_lemma:
-        noun_lemma = noun_lemma_by_form_plain.get(word_plain)
+    # Try noun lemma lookup
+    noun_lemma = lex.noun_lemma_by_form.get(word_lower) or lex.noun_lemma_by_form_plain.get(word_plain)
     if noun_lemma:
         if not require_vocab:
             return noun_lemma
@@ -557,9 +547,9 @@ def get_rank(word: str, top_1000: list[dict]) -> Optional[int]:
     Returns:
         rank is 1-999 (999=closest neighbor) or None if not in top 1000
     """
-    word_lower = word.lower().strip()
+    word_lower = normalize_word(word)
     for i, entry in enumerate(top_1000):
-        if entry["word"].lower() == word_lower:
+        if normalize_word(entry["word"]) == word_lower:
             rank = 999 - i
             return max(1, rank)
 

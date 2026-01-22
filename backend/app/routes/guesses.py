@@ -2,17 +2,17 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from supabase import create_client
 
-from ..config import get_settings
 from ..embeddings import (
     get_embedding,
-    is_word_in_vocabulary,
     compute_score_and_temperature,
     get_rank,
     is_allowed_guess,
     normalize_guess_word,
+    normalize_word,
 )
+from ..services.supabase import get_supabase_client
+from ..utils.pgvector import parse_pgvector
 
 router = APIRouter(prefix="/api/guesses", tags=["guesses"])
 
@@ -38,12 +38,7 @@ class SubmitGuessResponse(BaseModel):
 @router.post("", response_model=SubmitGuessResponse)
 async def submit_guess(request: SubmitGuessRequest):
     """Submit a word guess and get similarity score."""
-    settings = get_settings()
-    
-    supabase = create_client(
-        settings.supabase_url,
-        settings.supabase_service_role_key
-    )
+    supabase = get_supabase_client()
     
     # Normalize word (lemmatize conjugated verbs when possible)
     word = normalize_guess_word(request.word)
@@ -83,26 +78,14 @@ async def submit_guess(request: SubmitGuessRequest):
     
     # Parse pgvector string to list of floats
     # pgvector returns format like "[0.1,0.2,...]" or "(0.1,0.2,...)"
-    if isinstance(secret_embedding_raw, str):
-        # Remove brackets and parse as floats
-        cleaned = secret_embedding_raw.strip("[]() ")
-        secret_embedding = [float(x) for x in cleaned.split(",")]
-    else:
-        secret_embedding = secret_embedding_raw
+    secret_embedding = parse_pgvector(secret_embedding_raw)
     
-    # Check if exact match
-    if word == secret_word.lower():
+    # Check if exact match (using consistent normalization)
+    if word == normalize_word(secret_word):
         score = 100
         rank = 1000  # Exact match = highest rank
         temperature = 100.0
     else:
-        # Check if word is in vocabulary
-        if not is_word_in_vocabulary(word):
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Le mot '{word}' n'existe pas dans le dictionnaire"
-            )
-        
         # Compute embedding and normalized score
         try:
             guess_embedding = get_embedding(word)

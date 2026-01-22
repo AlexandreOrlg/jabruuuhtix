@@ -5,12 +5,10 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from supabase import create_client
 
-from ..config import get_settings
+from ..services.supabase import get_supabase_client
 from ..embeddings import (
     get_embedding,
-    find_max_similarity,
     find_min_similarity,
     compute_top_1000,
     load_word_pools,
@@ -76,12 +74,7 @@ def get_random_secret_word(max_attempts: int = 25) -> tuple[str, str]:
 @router.post("", response_model=CreateRoomResponse)
 async def create_room(request: CreateRoomRequest):
     """Create a new game room with a secret word."""
-    settings = get_settings()
-    
-    supabase = create_client(
-        settings.supabase_url,
-        settings.supabase_service_role_key
-    )
+    supabase = get_supabase_client()
     
     # Generate room code and secret word
     room_code = generate_room_code()
@@ -154,7 +147,7 @@ async def create_room(request: CreateRoomRequest):
         room_id = room_data["id"]
         
         # Insert room secret with similarities and top 1000
-        supabase.table("room_secrets").insert({
+        room_secret_result = supabase.table("room_secrets").insert({
             "room_id": room_id,
             "secret_word": secret_word,
             "secret_embedding": secret_embedding,
@@ -162,6 +155,9 @@ async def create_room(request: CreateRoomRequest):
             "min_similarity": min_similarity,
             "top_1000_words": top_1000
         }).execute()
+        
+        if not room_secret_result.data:
+            raise HTTPException(status_code=500, detail="Failed to create room secret")
         
         return CreateRoomResponse(
             roomId=room_id,

@@ -1,11 +1,12 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import logging
 import sys
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routes import rooms, guesses
+from .routes import guesses, rooms
 
 # Configure logging
 logging.basicConfig(
@@ -16,11 +17,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def ensure_word_pools_available() -> None:
+    from .embeddings import load_word_pools
+
+    pools = load_word_pools()
+    if not pools:
+        raise RuntimeError("word_pools.json missing or empty in backend/data")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - load models on startup."""
     logger.info("Starting jabruuuhtix API...")
-    
+
+    logger.info("Validating word pools...")
+    ensure_word_pools_available()
+    logger.info("Word pools validated.")
+
     # Preload the Word2Vec model on startup
     try:
         from .embeddings import load_model
@@ -66,19 +79,3 @@ app.add_middleware(
 # Include routers
 app.include_router(rooms.router)
 app.include_router(guesses.router)
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "Jabruuuhtix-api"}
-
-
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "Jabruuuhtix API",
-        "docs": "/docs",
-        "health": "/health"
-    }
