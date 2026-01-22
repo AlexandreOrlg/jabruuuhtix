@@ -15,6 +15,7 @@ from ..embeddings import (
     compute_top_1000,
     load_word_pools,
     is_word_in_vocabulary,
+    is_lemma_form,
     normalize_guess_word,
 )
 
@@ -61,12 +62,12 @@ def get_random_secret_word(max_attempts: int = 25) -> tuple[str, str]:
             for _ in range(attempt_count):
                 raw_word = random.choice(candidates)
                 normalized = normalize_guess_word(raw_word)
-                if is_word_in_vocabulary(normalized):
+                if is_word_in_vocabulary(normalized) and is_lemma_form(normalized):
                     return normalized, difficulty
 
             for raw_word in candidates:
                 normalized = normalize_guess_word(raw_word)
-                if is_word_in_vocabulary(normalized):
+                if is_word_in_vocabulary(normalized) and is_lemma_form(normalized):
                     return normalized, difficulty
 
     raise HTTPException(status_code=500, detail="No secret word candidates available")

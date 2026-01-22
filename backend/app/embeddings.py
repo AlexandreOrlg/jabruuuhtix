@@ -119,6 +119,18 @@ def strip_accents(word: str) -> str:
     )
 
 
+def is_lemma_form(word: str) -> bool:
+    word_lower = word.lower().strip()
+    _, _, verb_lemma_by_form, noun_lemma_by_form, _ = load_lexicon_data()
+    if word_lower in verb_lemma_by_form or word_lower in noun_lemma_by_form:
+        return False
+    _, _, verb_lemma_by_form_plain, noun_lemma_by_form_plain = load_lexicon_normalized_data()
+    word_plain = strip_accents(word_lower)
+    if word_plain in verb_lemma_by_form_plain or word_plain in noun_lemma_by_form_plain:
+        return False
+    return True
+
+
 @lru_cache(maxsize=1)
 def load_lexicon_normalized_data() -> tuple[
     dict[str, str],
