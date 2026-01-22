@@ -85,30 +85,57 @@ async def create_room(request: CreateRoomRequest):
     
     # Generate room code and secret word
     room_code = generate_room_code()
-    secret_word, difficulty = get_random_secret_word()
+    min_max_similarity = 0.6
+    max_attempts = 25
+    secret_word = ""
+    difficulty = "medium"
+    secret_embedding: list[float] = []
+    max_similarity = 0.0
+    min_similarity = 0.1
+    top_1000: list[dict] = []
+
+    for _ in range(max_attempts):
+        candidate, candidate_difficulty = get_random_secret_word()
+        try:
+            candidate_embedding = get_embedding(candidate)
+        except Exception as e:
+            logger.warning(f"Failed to compute embedding for '{candidate}': {e}")
+            continue
+
+        try:
+            candidate_top_1000 = compute_top_1000(candidate)
+            if not candidate_top_1000:
+                logger.warning(f"No top-1000 words for '{candidate}', retrying")
+                continue
+            candidate_max_similarity = float(candidate_top_1000[0]["similarity"])
+            if candidate_max_similarity < min_max_similarity:
+                logger.info(
+                    f"Secret '{candidate}' below similarity threshold "
+                    f"({candidate_max_similarity:.4f} < {min_max_similarity:.2f}); retrying"
+                )
+                continue
+            candidate_min_similarity = find_min_similarity(candidate)
+        except Exception as e:
+            logger.warning(f"Failed to compute similarities for '{candidate}': {e}")
+            continue
+
+        secret_word = candidate
+        difficulty = candidate_difficulty
+        secret_embedding = candidate_embedding
+        max_similarity = candidate_max_similarity
+        min_similarity = candidate_min_similarity
+        top_1000 = candidate_top_1000
+        break
+
+    if not secret_word:
+        raise HTTPException(status_code=500, detail="No suitable secret word found")
     mode = request.mode
-    
-    # Compute embedding for secret word
-    try:
-        secret_embedding = get_embedding(secret_word)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to compute embedding: {str(e)}")
-    
-    # Find max and min similarity for score normalization
-    try:
-        max_similarity = find_max_similarity(secret_word)
-        min_similarity = find_min_similarity(secret_word)
-        top_1000 = compute_top_1000(secret_word)
-        logger.info(
-            f"Room created with secret '{secret_word}', difficulty: {difficulty}, "
-            f"max_similarity: {max_similarity:.4f}, min_similarity: {min_similarity:.4f}, "
-            f"top_1000: {len(top_1000)} words"
-        )
-    except Exception as e:
-        logger.warning(f"Failed to compute similarities, using defaults: {e}")
-        max_similarity = 0.7
-        min_similarity = 0.1
-        top_1000 = []
+
+    logger.info(
+        f"Room created with secret '{secret_word}', difficulty: {difficulty}, "
+        f"max_similarity: {max_similarity:.4f}, min_similarity: {min_similarity:.4f}, "
+        f"top_1000: {len(top_1000)} words"
+    )
     
     # Create room in database
     try:
