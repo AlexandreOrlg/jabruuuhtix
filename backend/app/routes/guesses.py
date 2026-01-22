@@ -79,7 +79,7 @@ async def submit_guess(request: SubmitGuessRequest):
     secret_embedding_raw = secret["secret_embedding"]
     max_similarity = secret.get("max_similarity", 0.7)
     min_similarity = secret.get("min_similarity", 0.1)
-    top_1000 = secret.get("top_1000_words", [])
+    top_1000 = secret.get("top_1000_words") or []
     
     # Parse pgvector string to list of floats
     # pgvector returns format like "[0.1,0.2,...]" or "(0.1,0.2,...)"

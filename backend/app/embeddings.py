@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import random
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -112,12 +113,60 @@ def load_lexicon_data() -> tuple[
     return allowed, noun_lemmas, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas
 
 
+def strip_accents(word: str) -> str:
+    return "".join(
+        char for char in unicodedata.normalize("NFD", word) if unicodedata.category(char) != "Mn"
+    )
+
+
+@lru_cache(maxsize=1)
+def load_lexicon_normalized_data() -> tuple[
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+]:
+    allowed, _, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas = load_lexicon_data()
+
+    allowed_by_plain: dict[str, str] = {}
+    non_verb_lemmas_by_plain: dict[str, str] = {}
+    verb_lemma_by_form_plain: dict[str, str] = {}
+    noun_lemma_by_form_plain: dict[str, str] = {}
+
+    for word in allowed:
+        key = strip_accents(word)
+        allowed_by_plain.setdefault(key, word)
+
+    for lemma in non_verb_lemmas:
+        key = strip_accents(lemma)
+        non_verb_lemmas_by_plain.setdefault(key, lemma)
+
+    for form, lemma in verb_lemma_by_form.items():
+        key = strip_accents(form)
+        verb_lemma_by_form_plain.setdefault(key, lemma)
+
+    for form, lemma in noun_lemma_by_form.items():
+        key = strip_accents(form)
+        noun_lemma_by_form_plain.setdefault(key, lemma)
+
+    return (
+        allowed_by_plain,
+        non_verb_lemmas_by_plain,
+        verb_lemma_by_form_plain,
+        noun_lemma_by_form_plain,
+    )
+
+
 def is_allowed_guess(word: str) -> bool:
     """Apply the same lexicon filter used for the top-1000 list."""
     allowed_words, _, _, _, _ = load_lexicon_data()
     if not allowed_words:
         return True
-    return word.lower().strip() in allowed_words
+    word_lower = word.lower().strip()
+    if word_lower in allowed_words:
+        return True
+    allowed_by_plain, _, _, _ = load_lexicon_normalized_data()
+    return strip_accents(word_lower) in allowed_by_plain
 
 
 def download_model(url: str, destination: Path) -> None:
@@ -414,15 +463,26 @@ def load_word_pools() -> Optional[dict[str, list[str]]]:
         logger.warning(f"Failed to load word pools: {exc}")
         return None
 
-    model = load_model()
     pools: dict[str, list[str]] = {}
     for key in ("easy", "medium", "hard"):
         words = data.get(key, [])
         if not isinstance(words, list):
             continue
-        filtered = [word for word in words if word in model.key_to_index]
-        if filtered:
-            pools[key] = filtered
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for word in words:
+            word_str = str(word).strip()
+            if not word_str:
+                continue
+            normalized = normalize_guess_word(word_str, require_vocab=False)
+            if not is_word_in_vocabulary(normalized):
+                continue
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            cleaned.append(normalized)
+        if cleaned:
+            pools[key] = cleaned
 
     if not pools:
         logger.warning("Word pools are empty after filtering")
@@ -431,22 +491,49 @@ def load_word_pools() -> Optional[dict[str, list[str]]]:
     return pools
 
 
-def normalize_guess_word(word: str) -> str:
-    """Normalize conjugated verbs to their lemma when possible."""
+def normalize_guess_word(word: str, require_vocab: bool = True) -> str:
+    """Normalize conjugated verbs or plural nouns to their lemma when possible."""
     word_lower = word.lower().strip()
     _, _, verb_lemma_by_form, noun_lemma_by_form, non_verb_lemmas = load_lexicon_data()
+    (
+        _,
+        non_verb_lemmas_by_plain,
+        verb_lemma_by_form_plain,
+        noun_lemma_by_form_plain,
+    ) = load_lexicon_normalized_data()
+    word_plain = strip_accents(word_lower)
+
     if word_lower in non_verb_lemmas:
         return word_lower
+    if word_plain in non_verb_lemmas_by_plain:
+        lemma = non_verb_lemmas_by_plain[word_plain]
+        if not require_vocab or is_word_in_vocabulary(lemma):
+            return lemma
 
     lemma = verb_lemma_by_form.get(word_lower)
+    if not lemma:
+        lemma = verb_lemma_by_form_plain.get(word_plain)
     if lemma:
+        if not require_vocab:
+            return lemma
         if is_word_in_vocabulary(lemma):
             return lemma
+        lemma_plain = strip_accents(lemma)
+        if is_word_in_vocabulary(lemma_plain):
+            return lemma_plain
         return word_lower
 
     noun_lemma = noun_lemma_by_form.get(word_lower)
-    if noun_lemma and is_word_in_vocabulary(noun_lemma):
-        return noun_lemma
+    if not noun_lemma:
+        noun_lemma = noun_lemma_by_form_plain.get(word_plain)
+    if noun_lemma:
+        if not require_vocab:
+            return noun_lemma
+        if is_word_in_vocabulary(noun_lemma):
+            return noun_lemma
+        noun_lemma_plain = strip_accents(noun_lemma)
+        if is_word_in_vocabulary(noun_lemma_plain):
+            return noun_lemma_plain
 
     return word_lower
 

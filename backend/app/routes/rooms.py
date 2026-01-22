@@ -13,8 +13,9 @@ from ..embeddings import (
     find_max_similarity,
     find_min_similarity,
     compute_top_1000,
-    get_secret_word_candidates,
     load_word_pools,
+    is_word_in_vocabulary,
+    normalize_guess_word,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,19 +49,25 @@ def choose_difficulty(weights: dict[str, float]) -> str:
     return "medium"
 
 
-def get_random_secret_word() -> tuple[str, str]:
-    """Pick a secret word from precomputed pools (auto difficulty)."""
+def get_random_secret_word(max_attempts: int = 25) -> tuple[str, str]:
+    """Pick a secret word from precomputed pools and normalize it."""
     pools = load_word_pools()
     if pools:
         weights = {"easy": 0.5, "medium": 0.35, "hard": 0.15}
         difficulty = choose_difficulty(weights)
         candidates = pools.get(difficulty, [])
         if candidates:
-            return random.choice(candidates), difficulty
+            attempt_count = min(max_attempts, len(candidates))
+            for _ in range(attempt_count):
+                raw_word = random.choice(candidates)
+                normalized = normalize_guess_word(raw_word)
+                if is_word_in_vocabulary(normalized):
+                    return normalized, difficulty
 
-    candidates = get_secret_word_candidates()
-    if candidates:
-        return random.choice(candidates), "auto"
+            for raw_word in candidates:
+                normalized = normalize_guess_word(raw_word)
+                if is_word_in_vocabulary(normalized):
+                    return normalized, difficulty
 
     raise HTTPException(status_code=500, detail="No secret word candidates available")
 

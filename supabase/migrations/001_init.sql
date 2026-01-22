@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS room_secrets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     room_id UUID UNIQUE NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     secret_word TEXT NOT NULL,
-    secret_embedding vector(300) NOT NULL,
+    secret_embedding vector(700) NOT NULL,
     max_similarity FLOAT DEFAULT 0.7,  -- For score normalization
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

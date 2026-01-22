@@ -71,7 +71,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE rooms (...);
 CREATE TABLE room_secrets (
     ...
-    secret_embedding vector(500),  -- Word2Vec 500 dimensions
+    secret_embedding vector(700),  -- Word2Vec 700 dimensions
     top_1000_words JSONB,
     min_similarity FLOAT
 );
