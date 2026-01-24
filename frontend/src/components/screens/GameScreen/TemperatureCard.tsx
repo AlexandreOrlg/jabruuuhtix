@@ -6,7 +6,6 @@ import type { RoomMode } from "@/models/Room";
 
 interface TemperatureCardProps {
     bestTemperature: number;
-    lastGuess: Guess | null;
     guesses: Guess[];
     roomMode: RoomMode;
     playerId: string;
@@ -45,7 +44,6 @@ function getTemperatureBarColor(
 
 export function TemperatureCard({
     bestTemperature,
-    lastGuess,
     guesses,
     roomMode,
     playerId,

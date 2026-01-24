@@ -37,7 +37,6 @@ export function GameScreen({
     onSubmitGuess,
     onLeaveRoom,
     isLoading,
-    error,
 }: GameScreenProps) {
     const players = usePlayers(guesses, playerId, presentPlayers);
     const isJcjMode = roomMode === "jcj";
@@ -88,7 +87,6 @@ export function GameScreen({
                         <div className="mb-4">
                             <TemperatureCard
                                 bestTemperature={displayedBestTemperature}
-                                lastGuess={lastGuess}
                                 guesses={guesses}
                                 roomMode={roomMode}
                                 playerId={playerId}
