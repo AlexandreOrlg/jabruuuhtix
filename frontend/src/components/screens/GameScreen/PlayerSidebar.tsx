@@ -27,6 +27,7 @@ function PlayerItem({ player }: { player: PlayerSummary }) {
                         <span>
                             {player.guessCount} {attemptsLabel}
                         </span>
+
                         <span className={cn("font-semibold", Guess.getTemperatureColor(player.bestScore))}>
                             {player.bestScore}%
                         </span>
