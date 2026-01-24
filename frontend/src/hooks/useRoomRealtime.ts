@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { GuessData } from "@/models/Guess";
 import type { RoomData } from "@/models/Room";
-import type { PlayerData } from "@/models/Player";
+import type { PlayerPresenceData } from "@/models/Player";
 import { Guess } from "@/models/Guess";
 import { Room } from "@/models/Room";
 
@@ -13,20 +13,20 @@ interface UseRoomRealtimeOptions {
     playerName: string;
     onGuessInsert: (guess: Guess) => void;
     onRoomUpdate: (room: Room) => void;
-    onPresenceSync?: (players: PlayerData[]) => void;
-    onPresenceJoin?: (players: PlayerData[]) => void;
-    onPresenceLeave?: (players: PlayerData[]) => void;
+    onPresenceSync?: (players: PlayerPresenceData[]) => void;
+    onPresenceJoin?: (players: PlayerPresenceData[]) => void;
+    onPresenceLeave?: (players: PlayerPresenceData[]) => void;
 }
 
-function isPlayerPresence(value: unknown): value is PlayerData {
+function isPlayerPresence(value: unknown): value is PlayerPresenceData {
     if (!value || typeof value !== "object") return false;
     const candidate = value as Record<string, unknown>;
     return typeof candidate.id === "string" && typeof candidate.name === "string";
 }
 
-function normalizePresenceList(presences: unknown): PlayerData[] {
+function normalizePresenceList(presences: unknown): PlayerPresenceData[] {
     if (!Array.isArray(presences)) return [];
-    const players: PlayerData[] = [];
+    const players: PlayerPresenceData[] = [];
     for (const presence of presences) {
         if (isPlayerPresence(presence)) {
             const joinedAt =
@@ -41,8 +41,8 @@ function normalizePresenceList(presences: unknown): PlayerData[] {
     return players;
 }
 
-function normalizePresenceState(state: Record<string, unknown>): PlayerData[] {
-    const players = new Map<string, PlayerData>();
+function normalizePresenceState(state: Record<string, unknown>): PlayerPresenceData[] {
+    const players = new Map<string, PlayerPresenceData>();
     for (const presences of Object.values(state)) {
         for (const presence of normalizePresenceList(presences)) {
             players.set(presence.id, presence);

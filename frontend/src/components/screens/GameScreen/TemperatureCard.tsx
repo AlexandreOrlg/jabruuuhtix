@@ -2,41 +2,17 @@ import { useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/8bit/card";
 import { Progress } from "@/components/ui/8bit/progress";
 import { Guess } from "@/models/Guess";
+import {
+    getTemperatureBarColor,
+    getTemperatureTextColor,
+    TEMPERATURE_MARKS,
+    NEAR_MAX_TEMPERATURE,
+} from "@/lib/temperature";
+import { TEMPERATURE_BAR } from "@/lib/constants";
 
 interface TemperatureCardProps {
     bestTemperature: number;
     barGuesses: Guess[];
-}
-
-const MAX_BAR_HEIGHT = 40;
-const MIN_BAR_WIDTH = 3;
-const MAX_BAR_WIDTH = 12;
-const BAR_GAP = 4;
-const BAR_CONTAINER_WIDTH = 240;
-const NEAR_MAX_TEMPERATURE = 90;
-const TEMPERATURE_MARKS = [
-    { value: 0, label: "Froid", align: "left" },
-    { value: 30, label: "Moyen" },
-    { value: 60, label: "Chaud" },
-    { value: 80, label: "Brûlant" },
-];
-
-function getTemperatureBarColor(
-    temperature: number,
-    enableTrail: boolean
-): string {
-    if (enableTrail && temperature >= NEAR_MAX_TEMPERATURE) {
-        return "temperature-trail";
-    }
-    if (temperature >= 90) return "bg-red-500";
-    if (temperature >= 75) return "bg-red-400";
-    if (temperature >= 60) return "bg-orange-400";
-    if (temperature >= 45) return "bg-amber-400";
-    if (temperature >= 30) return "bg-yellow-400";
-    if (temperature >= 20) return "bg-lime-400";
-    if (temperature >= 10) return "bg-teal-300";
-    if (temperature > 0) return "bg-sky-300";
-    return "bg-cyan-400";
 }
 
 export function TemperatureCard({
@@ -46,23 +22,24 @@ export function TemperatureCard({
     const barContainerRef = useRef<HTMLDivElement>(null);
     const progressValue = Math.min(100, Math.max(0, bestTemperature));
     const isNearMax = bestTemperature >= NEAR_MAX_TEMPERATURE;
+
     const temperatureBars = useMemo(() => {
         const count = barGuesses.length;
         if (count === 0) {
-            return { bars: [], barWidth: MAX_BAR_WIDTH };
+            return { bars: [], barWidth: TEMPERATURE_BAR.MAX_WIDTH };
         }
 
         const computedWidth = Math.floor(
-            (BAR_CONTAINER_WIDTH - BAR_GAP * Math.max(0, count - 1)) / count
+            (TEMPERATURE_BAR.CONTAINER_WIDTH - TEMPERATURE_BAR.GAP * Math.max(0, count - 1)) / count
         );
         const barWidth = Math.max(
-            MIN_BAR_WIDTH,
-            Math.min(MAX_BAR_WIDTH, computedWidth)
+            TEMPERATURE_BAR.MIN_WIDTH,
+            Math.min(TEMPERATURE_BAR.MAX_WIDTH, computedWidth)
         );
 
         const bars = barGuesses.map((guess) => ({
             id: guess.id,
-            height: Math.max(4, Math.round((guess.temperature / 100) * MAX_BAR_HEIGHT)),
+            height: Math.max(4, Math.round((guess.temperature / 100) * TEMPERATURE_BAR.MAX_HEIGHT)),
             color: getTemperatureBarColor(guess.temperature, isNearMax),
         }));
 
@@ -84,7 +61,7 @@ export function TemperatureCard({
                     <div className="flex flex-col">
                         <div className="text-sm text-gray-400 mb-1">Température max</div>
                         <div
-                            className={`text-5xl font-bold ${Guess.getTemperatureColor(bestTemperature)}`}
+                            className={`text-5xl font-bold ${getTemperatureTextColor(bestTemperature)}`}
                         >
                             {bestTemperature.toFixed(1)}°C
                         </div>
@@ -130,8 +107,8 @@ export function TemperatureCard({
                         ref={barContainerRef}
                         className="flex items-end w-full justify-start overflow-x-auto hide-scrollbar"
                         style={{
-                            gap: `${BAR_GAP}px`,
-                            height: `${MAX_BAR_HEIGHT}px`,
+                            gap: `${TEMPERATURE_BAR.GAP}px`,
+                            height: `${TEMPERATURE_BAR.MAX_HEIGHT}px`,
                         }}
                     >
                         {temperatureBars.bars.map((bar) => (
@@ -141,7 +118,7 @@ export function TemperatureCard({
                                 style={{
                                     width: `${temperatureBars.barWidth}px`,
                                     height: `${bar.height}px`,
-                                    minWidth: `${MIN_BAR_WIDTH}px`,
+                                    minWidth: `${TEMPERATURE_BAR.MIN_WIDTH}px`,
                                 }}
                             />
                         ))}

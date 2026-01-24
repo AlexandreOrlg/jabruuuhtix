@@ -5,7 +5,7 @@ import { useGuesses } from "@/hooks/useGuesses";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import type { Guess } from "@/models/Guess";
 import type { Room, RoomMode } from "@/models/Room";
-import type { PlayerData } from "@/models/Player";
+import type { PlayerPresenceData } from "@/models/Player";
 import type { SubmitGuessResponse } from "@/lib/types";
 import { toast } from "@/components/ui/8bit/toast";
 
@@ -18,11 +18,11 @@ interface UseRoomReturn {
     room: Room | null;
     guesses: Guess[];
     submittedWords: Set<string>;
-    presentPlayers: PlayerData[];
+    presentPlayers: PlayerPresenceData[];
     isLoading: boolean;
     error: string | null;
     guessValidationPulse: number;
-    revealedWord: string | null;
+
     createRoom: (mode: RoomMode) => Promise<Room | null>;
     joinRoom: (roomCode: string) => Promise<boolean>;
     submitGuess: (word: string) => Promise<SubmitGuessResponse | null>;
@@ -34,13 +34,13 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [guessValidationPulse, setGuessValidationPulse] = useState(0);
-    const [presentPlayers, setPresentPlayers] = useState<PlayerData[]>([]);
+    const [presentPlayers, setPresentPlayers] = useState<PlayerPresenceData[]>([]);
     const knownPlayersRef = useRef<Set<string>>(new Set());
 
     const { guesses, addGuess, replaceGuesses, clearGuesses, submittedWords } =
         useGuesses(playerId);
 
-    const revealedWord = room?.revealedWord ?? null;
+
 
     const handleRoomUpdate = useCallback((updatedRoom: Room) => {
         setRoom(updatedRoom);
@@ -57,8 +57,8 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     );
 
     const mergePlayers = useCallback(
-        (current: PlayerData[], incoming: PlayerData[]) => {
-            const merged = new Map<string, PlayerData>();
+        (current: PlayerPresenceData[], incoming: PlayerPresenceData[]) => {
+            const merged = new Map<string, PlayerPresenceData>();
             for (const player of current) {
                 merged.set(player.id, player);
             }
@@ -70,13 +70,13 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         []
     );
 
-    const handlePresenceSync = useCallback((players: PlayerData[]) => {
+    const handlePresenceSync = useCallback((players: PlayerPresenceData[]) => {
         setPresentPlayers(players);
         knownPlayersRef.current = new Set(players.map((player) => player.id));
     }, []);
 
     const handlePresenceJoin = useCallback(
-        (players: PlayerData[]) => {
+        (players: PlayerPresenceData[]) => {
             setPresentPlayers((prev) => mergePlayers(prev, players));
             for (const player of players) {
                 if (player.id === playerId) continue;
@@ -90,7 +90,7 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     );
 
     const handlePresenceLeave = useCallback(
-        (players: PlayerData[]) => {
+        (players: PlayerPresenceData[]) => {
             const leavingIds = new Set(players.map((player) => player.id));
             setPresentPlayers((prev) => prev.filter((player) => !leavingIds.has(player.id)));
             for (const player of players) {
@@ -222,7 +222,7 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         isLoading,
         error,
         guessValidationPulse,
-        revealedWord,
+
         createRoom: createRoomHandler,
         joinRoom: joinRoomHandler,
         submitGuess: submitGuessHandler,

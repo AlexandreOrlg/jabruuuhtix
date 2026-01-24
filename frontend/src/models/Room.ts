@@ -56,4 +56,25 @@ export class Room {
             created_at: this.createdAt.toISOString(),
         });
     }
+
+    /**
+     * Whether the game allows submitting guesses
+     */
+    get canSubmitGuess(): boolean {
+        return this.isActive && !this.isWon;
+    }
+
+    /**
+     * Human-readable mode label
+     */
+    get modeLabel(): string {
+        return this.mode === "coop" ? "Coopératif" : "Joueur contre Joueur";
+    }
+
+    /**
+     * Whether all words should be revealed to all players
+     */
+    get shouldRevealAllWords(): boolean {
+        return this.mode === "coop" || this.isWon;
+    }
 }

@@ -1,3 +1,9 @@
+import {
+    getTemperatureTextColor,
+    getTemperatureEmoji,
+    formatTemperature,
+} from "@/lib/temperature";
+
 export interface GuessData {
     id: string;
     room_id: string;
@@ -51,38 +57,18 @@ export class Guess {
     }
 
     get formattedTemperature(): string {
-        return `${this.temperature.toFixed(1)}°C`;
+        return formatTemperature(this.temperature);
     }
 
     get temperatureEmoji(): string {
-        if (this.temperature >= 90) return "🔥";
-        if (this.temperature >= 75) return "🥵";
-        if (this.temperature >= 60) return "🌡️";
-        if (this.temperature >= 45) return "🔶";
-        if (this.temperature >= 30) return "🙂";
-        if (this.temperature >= 20) return "🌤️";
-        if (this.temperature >= 10) return "💨";
-        if (this.temperature > 0) return "🧊";
-        return "❄️";
+        return getTemperatureEmoji(this.temperature);
     }
 
     get temperatureColor(): string {
-        return Guess.getTemperatureColor(this.temperature);
+        return getTemperatureTextColor(this.temperature);
     }
 
 
-    static getTemperatureColor(temperature: number): string {
-        if (temperature >= 90 && temperature < 100) return "temperature-flame";
-        if (temperature >= 90) return "text-red-500";
-        if (temperature >= 75) return "text-red-400";
-        if (temperature >= 60) return "text-orange-400";
-        if (temperature >= 45) return "text-amber-400";
-        if (temperature >= 30) return "text-yellow-400";
-        if (temperature >= 20) return "text-lime-400";
-        if (temperature >= 10) return "text-teal-300";
-        if (temperature > 0) return "text-sky-300";
-        return "text-cyan-400";
-    }
 
     static sortByScore(guesses: Guess[]): Guess[] {
         return [...guesses].sort((a, b) => {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/8bit/button";
 import { Input } from "@/components/ui/8bit/input";
+import { GAME_RULES } from "@/lib/constants";
 
 interface GuessFormProps {
     isLoading: boolean;
@@ -36,7 +37,7 @@ export function GuessForm({
         const normalizedWord = word.toLowerCase().trim();
 
         if (!normalizedWord) return;
-        if (normalizedWord.length <= 2) return;
+        if (normalizedWord.length < GAME_RULES.MIN_WORD_LENGTH) return;
         if (blockedWords.has(normalizedWord)) return;
 
         const result = await onSubmitGuess(normalizedWord);

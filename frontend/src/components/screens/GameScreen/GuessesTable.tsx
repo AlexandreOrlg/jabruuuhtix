@@ -6,6 +6,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/8bit/table";
+import { NEAR_MAX_TEMPERATURE } from "@/lib/temperature";
 import type { Guess } from "@/models/Guess";
 
 interface GuessesTableProps {
@@ -39,7 +40,7 @@ export function GuessesTable({
             </TableHeader>
             <TableBody>
                 {guesses.map((guess) => {
-                    const isHighScore = guess.temperature >= 90;
+                    const isHighScore = guess.temperature >= NEAR_MAX_TEMPERATURE;
                     const rowClass =
                         guess.belongsTo(playerId)
                             ? "bg-primary/10"

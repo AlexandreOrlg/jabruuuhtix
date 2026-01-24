@@ -1,13 +1,13 @@
 import { cn } from "@/lib/utils";
-import { Guess } from "@/models/Guess";
+import { getTemperatureTextColor } from "@/lib/temperature";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/8bit/card";
-import type { PlayerSummary } from "@/hooks/usePlayers";
+import type { PlayerWithStats } from "@/models/Player";
 
 interface PlayerSidebarProps {
-    players: PlayerSummary[];
+    players: PlayerWithStats[];
 }
 
-function PlayerItem({ player }: { player: PlayerSummary }) {
+function PlayerItem({ player }: { player: PlayerWithStats }) {
     const attemptsLabel = player.guessCount === 1 ? "essai" : "essais";
 
     return (
@@ -28,7 +28,7 @@ function PlayerItem({ player }: { player: PlayerSummary }) {
                             {player.guessCount} {attemptsLabel}
                         </span>
 
-                        <span className={cn("font-semibold", Guess.getTemperatureColor(player.bestScore))}>
+                        <span className={cn("font-semibold", getTemperatureTextColor(player.bestScore))}>
                             {player.bestScore}%
                         </span>
                     </div>
