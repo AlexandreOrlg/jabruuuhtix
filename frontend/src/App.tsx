@@ -161,7 +161,6 @@ function App() {
             initialRoomCode={initialRoomCode}
           />
         )}
-
       </main>
 
       <footer className="retro bottom-0 left-0 right-0 border-t bg-white/10 border-white/10  px-4 py-3 text-center text-[10px] text-white/70">
@@ -179,7 +178,6 @@ function App() {
           github.com/AlexandreOrlg/jabruuuhtix
         </a>
       </footer >
-
 
       <Toaster position="bottom-right" />
     </div >

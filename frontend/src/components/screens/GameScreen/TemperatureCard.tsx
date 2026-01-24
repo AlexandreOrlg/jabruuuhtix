@@ -2,13 +2,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/8bit/card";
 import { Progress } from "@/components/ui/8bit/progress";
 import { Guess } from "@/models/Guess";
-import type { RoomMode } from "@/models/Room";
 
 interface TemperatureCardProps {
     bestTemperature: number;
-    guesses: Guess[];
-    roomMode: RoomMode;
-    playerId: string;
+    barGuesses: Guess[];
 }
 
 const MAX_BAR_HEIGHT = 40;
@@ -44,22 +41,13 @@ function getTemperatureBarColor(
 
 export function TemperatureCard({
     bestTemperature,
-    guesses,
-    roomMode,
-    playerId,
+    barGuesses,
 }: TemperatureCardProps) {
     const barContainerRef = useRef<HTMLDivElement>(null);
     const progressValue = Math.min(100, Math.max(0, bestTemperature));
     const isNearMax = bestTemperature >= NEAR_MAX_TEMPERATURE;
     const temperatureBars = useMemo(() => {
-        const sourceGuesses =
-            roomMode === "coop"
-                ? guesses
-                : guesses.filter((guess) => guess.belongsTo(playerId));
-        const orderedGuesses = [...sourceGuesses].sort(
-            (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-        );
-        const count = orderedGuesses.length;
+        const count = barGuesses.length;
         if (count === 0) {
             return { bars: [], barWidth: MAX_BAR_WIDTH };
         }
@@ -72,14 +60,14 @@ export function TemperatureCard({
             Math.min(MAX_BAR_WIDTH, computedWidth)
         );
 
-        const bars = orderedGuesses.map((guess) => ({
+        const bars = barGuesses.map((guess) => ({
             id: guess.id,
             height: Math.max(4, Math.round((guess.temperature / 100) * MAX_BAR_HEIGHT)),
             color: getTemperatureBarColor(guess.temperature, isNearMax),
         }));
 
         return { bars, barWidth };
-    }, [guesses, isNearMax, playerId, roomMode]);
+    }, [barGuesses, isNearMax]);
 
     useEffect(() => {
         const container = barContainerRef.current;

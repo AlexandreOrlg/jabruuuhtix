@@ -26,9 +26,7 @@ export interface Player {
 }
 
 export interface CreateRoomResponse {
-    roomId: string;
-    roomCode: string;
-    createdAt: string;
+    room: Room;
 }
 
 export interface SubmitGuessResponse {

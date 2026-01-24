@@ -19,6 +19,7 @@ export function usePlayers(
 ): PlayerSummary[] {
     const players = useMemo(() => {
         const playerMap = new Map<string, Player>();
+        const statsByPlayerId = new Map<string, { bestScore: number; guessCount: number }>();
 
         for (const player of presentPlayers) {
             if (!playerMap.has(player.id)) {
@@ -44,6 +45,15 @@ export function usePlayers(
                     })
                 );
             }
+            const stats = statsByPlayerId.get(guess.playerId) ?? {
+                bestScore: 0,
+                guessCount: 0,
+            };
+            stats.guessCount += 1;
+            if (guess.score > stats.bestScore) {
+                stats.bestScore = guess.score;
+            }
+            statsByPlayerId.set(guess.playerId, stats);
         }
 
         return Array.from(playerMap.values())
@@ -51,8 +61,8 @@ export function usePlayers(
                 id: player.id,
                 name: player.name,
                 displayName: player.displayName,
-                bestScore: player.getBestScore(guesses),
-                guessCount: player.getGuessCount(guesses),
+                bestScore: statsByPlayerId.get(player.id)?.bestScore ?? 0,
+                guessCount: statsByPlayerId.get(player.id)?.guessCount ?? 0,
                 isCurrent: player.isCurrentPlayer(currentPlayerId),
             }))
             .sort((a, b) => b.bestScore - a.bestScore);

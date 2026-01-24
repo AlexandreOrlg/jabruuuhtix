@@ -40,7 +40,14 @@ export function GameScreen({
 }: GameScreenProps) {
     const players = usePlayers(guesses, playerId, presentPlayers);
     const isJcjMode = roomMode === "jcj";
-    const { myGuesses, displayedBestTemperature, lastGuess } = useMemo(() => {
+    const {
+        myGuessesByTemp,
+        displayedBestTemperature,
+        lastGuess,
+        guessesByTemp,
+        latestGuessesByTemp,
+        barGuesses,
+    } = useMemo(() => {
         const playerGuesses = guesses.filter((guess) => guess.belongsTo(playerId));
         let latestGuess: Guess | null = null;
         for (const guess of playerGuesses) {
@@ -49,19 +56,35 @@ export function GameScreen({
             }
         }
 
+        const sortByTemperature = (items: Guess[]) =>
+            [...items].sort((a, b) => {
+                if (b.temperature !== a.temperature) {
+                    return b.temperature - a.temperature;
+                }
+                return b.createdAt.getTime() - a.createdAt.getTime();
+            });
+        const sortByTimeAsc = (items: Guess[]) =>
+            [...items].sort(
+                (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+            );
+
+        const latestGuesses = [...guesses]
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .slice(0, 20);
+
         return {
-            myGuesses: isJcjMode ? playerGuesses : [],
+            myGuessesByTemp: sortByTemperature(playerGuesses),
             displayedBestTemperature: isJcjMode
                 ? Guess.getBestTemperature(playerGuesses)
                 : Guess.getBestTemperature(guesses),
             lastGuess: latestGuess,
+            guessesByTemp: sortByTemperature(guesses),
+            latestGuessesByTemp: sortByTemperature(latestGuesses),
+            barGuesses: isJcjMode
+                ? sortByTimeAsc(playerGuesses)
+                : sortByTimeAsc(guesses),
         };
     }, [guesses, isJcjMode, playerId]);
-    const latestGuesses = useMemo(() => {
-        return [...guesses]
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-            .slice(0, 20);
-    }, [guesses]);
     const revealAllWords = roomMode === "coop" || Boolean(revealedWord);
     const blockedWords = useMemo(() => {
         if (roomMode === "coop") {
@@ -87,17 +110,13 @@ export function GameScreen({
                         <div className="mb-4">
                             <TemperatureCard
                                 bestTemperature={displayedBestTemperature}
-                                guesses={guesses}
-                                roomMode={roomMode}
-                                playerId={playerId}
+                                barGuesses={barGuesses}
                             />
                         </div>
 
-                        {revealedWord && (
+                        {revealedWord ? (
                             <VictoryBanner revealedWord={revealedWord} />
-                        )}
-
-                        {!revealedWord && (
+                        ) : (
                             <GuessForm
                                 isLoading={isLoading}
                                 blockedWords={blockedWords}
@@ -129,7 +148,7 @@ export function GameScreen({
                             <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Mes propositions</h3>
                                 <GuessesTable
-                                    guesses={myGuesses}
+                                    guesses={myGuessesByTemp}
                                     playerId={playerId}
                                     revealAllWords={true}
                                 />
@@ -137,7 +156,7 @@ export function GameScreen({
                             <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Toutes les propositions</h3>
                                 <GuessesTable
-                                    guesses={guesses}
+                                    guesses={guessesByTemp}
                                     playerId={playerId}
                                     revealAllWords={revealAllWords}
                                 />
@@ -148,7 +167,7 @@ export function GameScreen({
                             <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Toutes les propositions</h3>
                                 <GuessesTable
-                                    guesses={guesses}
+                                    guesses={guessesByTemp}
                                     playerId={playerId}
                                     revealAllWords={revealAllWords}
                                 />
@@ -156,7 +175,7 @@ export function GameScreen({
                             <div className="w-full min-w-0 overflow-hidden [&>div]:w-full px-2">
                                 <h3 className="text-lg font-semibold mb-4 text-center">Dernières propositions</h3>
                                 <GuessesTable
-                                    guesses={latestGuesses}
+                                    guesses={latestGuessesByTemp}
                                     playerId={playerId}
                                     revealAllWords={true}
                                 />

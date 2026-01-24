@@ -13,7 +13,7 @@ export function VictoryBanner({ revealedWord }: VictoryBannerProps) {
             spread: 70,
             origin: { y: 0.6 },
         });
-    }, [confetti]);
+    }, [revealedWord]);
 
     return (
         <Card className="mb-6 bg-green-900/50 border-green-400">

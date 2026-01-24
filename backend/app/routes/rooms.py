@@ -27,10 +27,17 @@ class CreateRoomRequest(BaseModel):
     mode: Literal["coop", "jcj"] = "coop"
 
 
+class RoomResponse(BaseModel):
+    id: str
+    code: str
+    status: Literal["active", "finished"]
+    revealed_word: str | None
+    mode: Literal["coop", "jcj"]
+    created_at: str
+
+
 class CreateRoomResponse(BaseModel):
-    roomId: str
-    roomCode: str
-    createdAt: str
+    room: RoomResponse
 
 
 def generate_room_code(length: int = 6) -> str:
@@ -160,9 +167,14 @@ async def create_room(request: CreateRoomRequest):
             raise HTTPException(status_code=500, detail="Failed to create room secret")
         
         return CreateRoomResponse(
-            roomId=room_id,
-            roomCode=room_code,
-            createdAt=room_data["created_at"]
+            room=RoomResponse(
+                id=room_data["id"],
+                code=room_data["code"],
+                status=room_data["status"],
+                revealed_word=room_data.get("revealed_word"),
+                mode=room_data["mode"],
+                created_at=room_data["created_at"],
+            )
         )
         
     except HTTPException:

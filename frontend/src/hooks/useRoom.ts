@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import { createRoom, fetchRoomByCode } from "@/api/rooms";
-import { fetchGuessesByRoomId, submitGuess } from "@/api/guesses";
+import { createRoom, fetchRoomWithGuessesByCode } from "@/api/rooms";
+import { submitGuess } from "@/api/guesses";
 import { useGuesses } from "@/hooks/useGuesses";
 import { useRoomRealtime } from "@/hooks/useRoomRealtime";
 import type { Guess } from "@/models/Guess";
@@ -144,12 +144,8 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
             setError(null);
 
             try {
-                const foundRoom = await fetchRoomByCode(roomCode);
-                if (!foundRoom) {
-                    throw new Error("Room not found");
-                }
-
-                const roomGuesses = await fetchGuessesByRoomId(foundRoom.id);
+                const { room: foundRoom, guesses: roomGuesses } =
+                    await fetchRoomWithGuessesByCode(roomCode);
                 setRoom(foundRoom);
                 replaceGuesses(roomGuesses);
                 setPresentPlayers([]);

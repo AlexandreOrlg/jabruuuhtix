@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
     Table,
     TableBody,
@@ -20,16 +19,7 @@ export function GuessesTable({
     playerId,
     revealAllWords,
 }: GuessesTableProps) {
-    const sortedGuesses = useMemo(() => {
-        return [...guesses].sort((a, b) => {
-            if (b.temperature !== a.temperature) {
-                return b.temperature - a.temperature;
-            }
-            return b.createdAt.getTime() - a.createdAt.getTime();
-        });
-    }, [guesses]);
-
-    if (sortedGuesses.length === 0) {
+    if (guesses.length === 0) {
         return (
             <div className="text-center text-gray-500 py-8">
                 Aucune proposition pour l'instant...
@@ -48,7 +38,7 @@ export function GuessesTable({
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {sortedGuesses.map((guess) => {
+                {guesses.map((guess) => {
                     const isHighScore = guess.temperature >= 90;
                     const rowClass =
                         guess.belongsTo(playerId)
