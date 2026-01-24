@@ -26,17 +26,24 @@ export interface BitInputProps
 }
 
 const Input = forwardRef<HTMLInputElement, BitInputProps>(
-  ({ className, font, ...props }, ref) => {
+  ({ className, font, "aria-invalid": ariaInvalid, ...props }, ref) => {
+    const isInvalid = ariaInvalid === true || ariaInvalid === "true";
+    const borderClass = isInvalid
+      ? "border-red-500"
+      : "border-foreground dark:border-ring";
+
     return (
       <div
         className={cn(
-          "relative border-y-6 border-foreground dark:border-ring !p-0 flex items-center",
+          "relative border-y-6 !p-0 flex items-center",
+          borderClass,
           className
         )}
       >
         <ShadcnInput
           ref={ref}
           {...props}
+          aria-invalid={ariaInvalid}
           className={cn(
             "rounded-none ring-0 !w-full",
             font !== "normal" && "retro",
@@ -45,7 +52,10 @@ const Input = forwardRef<HTMLInputElement, BitInputProps>(
         />
 
         <div
-          className="absolute inset-0 border-x-6 -mx-1.5 border-foreground dark:border-ring pointer-events-none"
+          className={cn(
+            "absolute inset-0 border-x-6 -mx-1.5 pointer-events-none",
+            borderClass
+          )}
           aria-hidden="true"
         />
       </div>

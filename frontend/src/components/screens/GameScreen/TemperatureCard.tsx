@@ -12,13 +12,26 @@ interface TemperatureCardProps {
     playerId: string;
 }
 
-const MAX_BAR_HEIGHT = 96;
+const MAX_BAR_HEIGHT = 40;
 const MIN_BAR_WIDTH = 3;
 const MAX_BAR_WIDTH = 12;
 const BAR_GAP = 4;
 const BAR_CONTAINER_WIDTH = 240;
+const NEAR_MAX_TEMPERATURE = 90;
+const TEMPERATURE_MARKS = [
+    { value: 0, label: "Froid", align: "left" },
+    { value: 30, label: "Moyen" },
+    { value: 60, label: "Chaud" },
+    { value: 80, label: "Brûlant" },
+];
 
-function getTemperatureBarColor(temperature: number): string {
+function getTemperatureBarColor(
+    temperature: number,
+    enableTrail: boolean
+): string {
+    if (enableTrail && temperature >= NEAR_MAX_TEMPERATURE) {
+        return "temperature-trail";
+    }
     if (temperature >= 90) return "bg-red-500";
     if (temperature >= 75) return "bg-red-400";
     if (temperature >= 60) return "bg-orange-400";
@@ -39,6 +52,7 @@ export function TemperatureCard({
 }: TemperatureCardProps) {
     const barContainerRef = useRef<HTMLDivElement>(null);
     const progressValue = Math.min(100, Math.max(0, bestTemperature));
+    const isNearMax = bestTemperature >= NEAR_MAX_TEMPERATURE;
     const temperatureBars = useMemo(() => {
         const sourceGuesses =
             roomMode === "coop"
@@ -63,11 +77,11 @@ export function TemperatureCard({
         const bars = orderedGuesses.map((guess) => ({
             id: guess.id,
             height: Math.max(4, Math.round((guess.temperature / 100) * MAX_BAR_HEIGHT)),
-            color: getTemperatureBarColor(guess.temperature),
+            color: getTemperatureBarColor(guess.temperature, isNearMax),
         }));
 
         return { bars, barWidth };
-    }, [guesses, playerId, roomMode]);
+    }, [guesses, isNearMax, playerId, roomMode]);
 
     useEffect(() => {
         const container = barContainerRef.current;
@@ -78,34 +92,53 @@ export function TemperatureCard({
     }, [temperatureBars.bars.length]);
 
     return (
-        <Card className="bg-gray-900/80 border-cyan-400 !pb-0">
-            <CardContent className="py-4 flex flex-col min-h-[240px] !pb-0">
-                <div className="text-center">
-                    <div className="text-sm text-gray-400 mb-1">Température max</div>
-                    <div
-                        className={`text-5xl font-bold ${Guess.getTemperatureColor(bestTemperature)}`}
-                    >
-                        {bestTemperature.toFixed(1)}°C
+        <Card className="bg-gray-900/80 border-cyan-400 !pb-0 ">
+            <CardContent className="py-1 flex flex-col !pb-0">
+                <div className="text-center flex gap-24 items-center">
+                    <div className="flex flex-col">
+                        <div className="text-sm text-gray-400 mb-1">Température max</div>
+                        <div
+                            className={`text-5xl font-bold ${Guess.getTemperatureColor(bestTemperature)}`}
+                        >
+                            {bestTemperature.toFixed(1)}°C
+                        </div>
                     </div>
-                    <Progress value={progressValue} className="mt-3 h-4" />
-                </div>
-                <div className="text-center">
-                    <div className="mt-3 text-xs text-gray-400">Dernière soumission</div>
-                    {lastGuess ? (
-                        <div className="flex items-center justify-center gap-2 text-sm">
-                            <span className="font-medium truncate max-w-[140px]">
-                                {lastGuess.word}
-                            </span>
-                            <span className={lastGuess.temperatureColor}>
-                                {lastGuess.temperatureEmoji} {lastGuess.formattedTemperature}
-                            </span>
+
+                    <div className="flex flex-col items-center w-full">
+                        <div className="relative w-full h-9 text-[10px] text-gray-400">
+                            {TEMPERATURE_MARKS.map((mark) => {
+                                const alignment =
+                                    mark.align === "left"
+                                        ? "translate-x-0"
+                                        : mark.align === "right"
+                                            ? "-translate-x-full"
+                                            : "-translate-x-1/2";
+
+                                return (
+                                    <div
+                                        key={mark.value}
+                                        className="absolute top-0"
+                                        style={{ left: `${Math.min(100, mark.value)}%` }}
+                                    >
+                                        <div className={`flex flex-col items-center ${alignment}`}>
+                                            <div className="mt-1 whitespace-nowrap leading-none pb-1">
+                                                {mark.label}
+                                            </div>
+                                            <div className="h-2 w-0.5 bg-gray-500/80 pb-1" />
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    ) : (
-                        <div className="text-xs text-gray-500 mt-1">
-                            Aucune proposition pour l'instant
-                        </div>
-                    )}
+
+                        <Progress
+                            value={progressValue}
+                            className="h-4 w-full"
+                            progressBg="temperature-progress"
+                        />
+                    </div>
                 </div>
+
                 <div className="-pb-4 mt-auto w-full flex justify-center pt-4">
                     <div
                         ref={barContainerRef}
