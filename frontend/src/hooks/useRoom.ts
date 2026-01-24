@@ -21,6 +21,7 @@ interface UseRoomReturn {
     presentPlayers: PlayerData[];
     isLoading: boolean;
     error: string | null;
+    guessValidationPulse: number;
     revealedWord: string | null;
     createRoom: (mode: RoomMode) => Promise<Room | null>;
     joinRoom: (roomCode: string) => Promise<boolean>;
@@ -32,6 +33,7 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
     const [room, setRoom] = useState<Room | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [guessValidationPulse, setGuessValidationPulse] = useState(0);
     const [presentPlayers, setPresentPlayers] = useState<PlayerData[]>([]);
     const knownPlayersRef = useRef<Set<string>>(new Set());
 
@@ -191,6 +193,13 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
                 return data;
             } catch (err) {
                 const message = err instanceof Error ? err.message : "Unknown error";
+                if (
+                    message.includes("n'est pas autorisé") ||
+                    message.includes("n'existe pas dans le dictionnaire")
+                ) {
+                    setGuessValidationPulse((prev) => prev + 1);
+                    return null;
+                }
                 setError(message);
                 return null;
             } finally {
@@ -206,6 +215,7 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         setPresentPlayers([]);
         knownPlayersRef.current = new Set();
         setError(null);
+        setGuessValidationPulse(0);
     }, [clearGuesses]);
 
     return {
@@ -215,6 +225,7 @@ export function useRoom({ playerId, playerName }: UseRoomOptions): UseRoomReturn
         presentPlayers,
         isLoading,
         error,
+        guessValidationPulse,
         revealedWord,
         createRoom: createRoomHandler,
         joinRoom: joinRoomHandler,

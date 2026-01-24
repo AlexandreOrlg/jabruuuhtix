@@ -70,12 +70,6 @@ export class Guess {
         return Guess.getTemperatureColor(this.temperature);
     }
 
-    static getScoreColor(score: number): string {
-        if (score >= 80) return "text-green-400";
-        if (score >= 60) return "text-yellow-400";
-        if (score >= 40) return "text-orange-400";
-        return "text-red-400";
-    }
 
     static getTemperatureColor(temperature: number): string {
         if (temperature >= 90 && temperature < 100) return "temperature-flame";

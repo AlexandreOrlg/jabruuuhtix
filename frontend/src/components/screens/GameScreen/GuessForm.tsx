@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/8bit/button";
 import { Input } from "@/components/ui/8bit/input";
@@ -6,14 +6,30 @@ import { Input } from "@/components/ui/8bit/input";
 interface GuessFormProps {
     isLoading: boolean;
     blockedWords: Set<string>;
+    validationPulse: number;
     onSubmitGuess: (word: string) => Promise<{ score: number } | null>;
 }
 
-export function GuessForm({ isLoading, blockedWords, onSubmitGuess }: GuessFormProps) {
+export function GuessForm({
+    isLoading,
+    blockedWords,
+    validationPulse,
+    onSubmitGuess,
+}: GuessFormProps) {
     const [word, setWord] = useState("");
     const [history, setHistory] = useState<string[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
+    const [remoteInvalid, setRemoteInvalid] = useState(false);
+    const [isShaking, setIsShaking] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (validationPulse === 0) return;
+        setRemoteInvalid(true);
+        setIsShaking(false);
+        requestAnimationFrame(() => setIsShaking(true));
+        setTimeout(() => inputRef.current?.focus(), 0);
+    }, [validationPulse]);
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
@@ -48,23 +64,33 @@ export function GuessForm({ isLoading, blockedWords, onSubmitGuess }: GuessFormP
 
     const normalizedWord = word.toLowerCase().trim();
     const isWordSubmitted = normalizedWord.length > 0 && blockedWords.has(normalizedWord);
+    const isInvalid = remoteInvalid || isWordSubmitted;
 
     return (
         <>
             <form onSubmit={handleSubmit} className="flex gap-6 w-full">
-                <Input
-                    ref={inputRef}
-                    type="text"
-                    placeholder="Proposez un mot..."
-                    value={word}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        setWord(event.target.value)
-                    }
-                    onKeyDown={handleKeyDown}
-                    className="w-full"
-                    disabled={isLoading}
-                    autoFocus
-                />
+                <div
+                    className={`w-full ${isShaking ? "input-shake" : ""}`}
+                    onAnimationEnd={() => setIsShaking(false)}
+                >
+                    <Input
+                        ref={inputRef}
+                        type="text"
+                        placeholder="Proposez un mot..."
+                        value={word}
+                        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                            if (remoteInvalid) {
+                                setRemoteInvalid(false);
+                            }
+                            setWord(event.target.value);
+                        }}
+                        onKeyDown={handleKeyDown}
+                        className="w-full"
+                        disabled={isLoading}
+                        autoFocus
+                        aria-invalid={isInvalid}
+                    />
+                </div>
                 <Button
                     type="submit"
                     disabled={isLoading || !normalizedWord || isWordSubmitted}
@@ -72,11 +98,6 @@ export function GuessForm({ isLoading, blockedWords, onSubmitGuess }: GuessFormP
                     {isLoading ? "..." : "→"}
                 </Button>
             </form>
-            {isWordSubmitted && normalizedWord && (
-                <div className="text-xs text-yellow-400 mt-2">
-                    Ce mot a déjà été proposé
-                </div>
-            )}
         </>
     );
 }

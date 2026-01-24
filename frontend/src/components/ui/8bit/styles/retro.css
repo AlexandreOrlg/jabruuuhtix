@@ -51,6 +51,43 @@
   }
 }
 
+.temperature-progress {
+  background: linear-gradient(
+    90deg,
+    #34d1ff 0%,
+    #38bdf8 15%,
+    #2dd4bf 30%,
+    #a3e635 45%,
+    #facc15 60%,
+    #f59e0b 75%,
+    #fb7185 90%,
+    #ef4444 100%
+  );
+}
+
+.temperature-trail {
+  background: linear-gradient(
+    90deg,
+    #ffe166 0%,
+    #ffb14b 25%,
+    #ff5c1a 50%,
+    #ffb14b 75%,
+    #ffe166 100%
+  );
+  background-size: 200% 100%;
+  box-shadow: 0 0 10px rgba(255, 92, 26, 0.45);
+  animation: temperature-trail-shift 1.2s linear infinite;
+}
+
+@keyframes temperature-trail-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
 .flame-row {
   background-image: linear-gradient(
     90deg,
@@ -84,5 +121,34 @@
   }
   100% {
     background-position: 200% 50%;
+  }
+}
+
+@keyframes input-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.input-shake {
+  animation: input-shake 0.35s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input-shake {
+    animation: none;
   }
 }

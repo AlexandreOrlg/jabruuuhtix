@@ -66,6 +66,7 @@ function App() {
     presentPlayers,
     isLoading,
     error,
+    guessValidationPulse,
     revealedWord,
     createRoom,
     joinRoom,
@@ -143,6 +144,7 @@ function App() {
             revealedWord={revealedWord}
             playerId={playerId}
             submittedWords={submittedWords}
+            guessValidationPulse={guessValidationPulse}
             onSubmitGuess={handleSubmitGuess}
             onLeaveRoom={handleLeaveRoom}
             isLoading={isLoading}
