@@ -1,160 +1,111 @@
-# 🎮 Jabruuuhtix
+# Jabruuuhtix
 
-> Jeu de mots temps réel basé sur la similarité sémantique (embeddings Word2Vec).
+Real‑time multiplayer word‑guessing game inspired by Cémantix, using semantic similarity to guide players to a secret word.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat&logo=supabase&logoColor=white)
 
-## 🎯 Concept
+## Features
 
-Jabruuuhtix est un jeu multijoueur en temps réel inspiré de **Cémantix**. Les joueurs doivent deviner un mot secret en proposant des mots. Chaque proposition est évaluée par similarité sémantique grâce aux embeddings Word2Vec.
+- Real‑time multiplayer rooms (no accounts, just a nickname).
+- Rich feedback: similarity score, rank, and temperature.
+- Two modes: COOP (shared guesses) or PVP (hidden guesses).
+- Docker‑first dev and production setup.
 
-### Système de scoring
+## Gameplay
 
-| Indicateur | Description |
-|------------|-------------|
-| **Score %** | Pourcentage de similarité (0-100%) |
-| **Rang ‰** | Position parmi les 1000 mots les plus proches (999 = le plus proche) |
-| **Température °C** | Indicateur visuel façon Cémantix |
+1. Enter a nickname.
+2. Create or join a room with a code.
+3. Submit guesses and watch the feedback.
+4. Reach 100% to reveal the secret word.
 
-### Échelle de température
+## Tech Stack
 
-| Température | Signification | Emoji |
-|-------------|---------------|-------|
-| 100°C | Mot exact trouvé ! | 🔥 |
-| 50-73°C | Très chaud (top 100) | 🌡️ |
-| 24-50°C | Tiède (dans top 1000) | 🫡 |
-| < 24°C | Froid (hors top 1000) | ❄️ |
-| Négatif | Très froid | 🧊 |
+- Frontend: React 19, Vite, TypeScript, Tailwind, shadcn/ui
+- Backend: FastAPI, Python 3.11, gensim
+- Database: Supabase (Postgres + pgvector)
+- Realtime: Supabase Realtime
 
-- **Modes** : COOP (tout le monde voit les propositions) / JCJ (les mots des autres sont masqués)
+## Quickstart (Docker)
 
-## 🚀 Installation
-
-### Prérequis
+### Prerequisites
 
 - Docker & Docker Compose
-- Un projet Supabase
+- A Supabase project
 
-### 1. Configuration
+### 1) Configure environment
 
 ```bash
-# Cloner et entrer dans le projet
-cd jabruuuhtix
-
-# Copier les variables d'environnement
 cp .env.example .env
 ```
 
-Remplissez `.env` avec vos valeurs :
+Fill in these required values:
+
 ```env
-# Backend
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Frontend (passées au build Docker)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_API_URL=https://your-api-domain.com
+VITE_API_URL=http://localhost:8081
 ```
 
-### 2. Base de données
+> The embedding model is downloaded on first run and can take a few minutes.
 
-Exécutez les scripts SQL dans votre projet Supabase :
-```sql
--- Activer pgvector
-CREATE EXTENSION IF NOT EXISTS vector;
+### 2) Database setup (Supabase)
 
--- Tables principales
-CREATE TABLE rooms (...);
-CREATE TABLE room_secrets (
-    ...
-    secret_embedding vector(700),  -- Word2Vec 700 dimensions
-    top_1000_words JSONB,
-    min_similarity FLOAT
-);
-CREATE TABLE guesses (
-    ...
-    rank INTEGER,
-    temperature FLOAT
-);
-```
+Run the migration:
 
-### 3. Lancement
+- `supabase/migrations/001_init.sql`
+
+### 3) Run
 
 ```bash
-# Développement (avec hot-reload)
+# Development (hot reload)
 docker-compose -f docker-compose.dev.yml up --build
 
 # Production
 docker-compose up -d --build
-
-# Ports :
-# - Frontend : http://localhost:3001 (dev) / http://localhost:3000 (prod)
-# - API : http://localhost:8081
 ```
 
-> ⚠️ Le premier démarrage télécharge le modèle Word2Vec (~298 MB).
+Default ports:
+- Frontend: `http://localhost:3001` (dev) / `http://localhost:3000` (prod)
+- API: `http://localhost:8081`
 
-## 🎮 Comment jouer
+## Local Development (without Docker)
 
-1. **Entrez votre pseudo**
-2. **Créez une salle** ou **rejoignez** avec un code
-3. **Proposez des mots** et observez votre score, rang et température
-4. Trouvez le mot avec un score de **100%** pour gagner !
+```bash
+# Backend
+pip install -r backend/requirements.txt
+python -m uvicorn backend.app.main:app --reload --port 8081
 
-## 🛠️ Stack technique
-
-| Couche | Technologies |
-|--------|-------------|
-| Frontend | React 19, Vite, TypeScript, Tailwind CSS, Shadcn UI + 8bitcn |
-| Backend | FastAPI, Python 3.11, gensim (Word2Vec) |
-| Embeddings | frWac Word2Vec (Jean-Philippe Fauconnier) |
-| Base de données | Supabase (PostgreSQL + pgvector) |
-| Temps réel | Supabase Realtime |
-| Infra | Docker, Docker Compose |
-
-## 📁 Structure
-
-```
-jabruuuhtix/
-├── frontend/           # React + Vite + TypeScript
-├── backend/            # FastAPI + Word2Vec
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── embeddings.py   # Word2Vec + température
-│   │   └── routes/
-│   └── OpenLexicon.tsv # Lexique utilisé pour filtrer les mots
-├── supabase/
-│   └── migrations/
-├── docker-compose.yml
-├── docker-compose.dev.yml
-└── .env.example
+# Frontend
+cd frontend
+npm install
+npm run dev
 ```
 
-## 📡 API
+## API (minimal)
 
 ### `POST /api/rooms`
-Crée une nouvelle salle de jeu.
+Create a room.
+
 ```json
 { "playerName": "Alex", "mode": "coop" }
-→ { "roomId", "roomCode", "createdAt" }
 ```
 
 ### `POST /api/guesses`
-Soumet une proposition de mot.
+Submit a guess.
+
 ```json
 { "roomCode": "ABC123", "playerId": "uuid", "playerName": "Alex", "word": "chat" }
-→ { "guessId", "word", "score", "rank", "temperature", "createdAt", "revealedWord" }
 ```
 
-## 🙏 Crédits
+## Contributing
 
-- Modèle Word2Vec français : [Jean-Philippe Fauconnier](https://fauconnier.github.io/#data)
-- Inspiré de [Cémantix](https://cemantix.certitudes.org)
+Issues and pull requests are welcome. Please include context, rationale, and tests when relevant.
 
-## 📝 License
+## License
 
 MIT
