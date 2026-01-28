@@ -4,12 +4,14 @@ import { useRoom } from "@/hooks/useRoom";
 import { usePlayer } from "@/hooks/usePlayer";
 import { useUrlSync } from "@/hooks/useUrlSync";
 import { useAutoJoin } from "@/hooks/useAutoJoin";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { HomeScreen } from "@/components/screens/HomeScreen/HomeScreen";
 import { GameScreen } from "@/components/screens/GameScreen/GameScreen";
 import { HeartIcon, MarseilleIcon } from "@/components/icons";
 import type { RoomMode } from "@/models/Room";
 
 function App() {
+  useAnalytics();
   const { playerId, playerName, setPlayerName } = usePlayer();
   const {
     room,
